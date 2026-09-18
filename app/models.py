@@ -25,19 +25,85 @@ class User(db.Model):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        if not self.password_hash:
+            return False
+        if self.password_hash.startswith(('pbkdf2:', 'scrypt:', 'argon2:')):
+            return check_password_hash(self.password_hash, password)
+        return self.password_hash == password
 
     def is_administrator(self):
-        return self.role == 'ADMINISTRATOR'
+        return True  # Simplified: all authenticated clinic accounts have full access
 
     def is_doctor(self):
-        return self.role == 'DOCTOR'
+        return True  # Simplified: all authenticated clinic accounts have full access
 
     def is_receptionist(self):
-        return self.role == 'RECEPTIONIST'
+        return True
 
     def __repr__(self):
-        return f"<User {self.username} ({self.role})>"
+        return f"<User {self.username}>"
+
+
+class Account(db.Model):
+    """
+    Simplified One-Account-One-Clinic Architecture.
+    Allows manual creation via SQL/phpMyAdmin or via /register web portal.
+    Authenticates with phone_number + password.
+    """
+    __tablename__ = 'accounts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    phone_number = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    clinic_name = db.Column(db.String(128), nullable=False, default='Central Clinic')
+    doctor_name = db.Column(db.String(128), nullable=False, default='Dr. Aung Kyaw')
+    password_hash = db.Column(db.String(255), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return False
+        # Supports both standard Werkzeug hashes and plain text for manual phpMyAdmin database inserts
+        if self.password_hash.startswith(('pbkdf2:', 'scrypt:', 'argon2:')):
+            return check_password_hash(self.password_hash, password)
+        return self.password_hash == password
+
+    def is_administrator(self):
+        return True
+
+    def is_doctor(self):
+        return True
+
+    def is_receptionist(self):
+        return True
+
+    @property
+    def username(self):
+        return self.phone_number
+
+    @property
+    def role(self):
+        return 'CLINIC_OWNER'
+
+    @property
+    def doctor_profile(self):
+        # Return first doctor profile or a mock profile matching doctor_name
+        doc = Doctor.query.filter_by(is_active=True).first()
+        if doc:
+            return doc
+        class MockDoc:
+            id = 1
+            display_name = self.doctor_name
+            name = self.doctor_name
+            specialty = 'General Medicine'
+        return MockDoc()
+
+    def __repr__(self):
+        return f"<Account {self.phone_number} ({self.clinic_name})>"
 
 
 # ==========================================

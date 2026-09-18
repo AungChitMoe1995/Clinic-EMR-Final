@@ -61,8 +61,8 @@
         <div class="clinic-nav-right">
             <div class="user-profile-pill">
                 <span class="user-avatar-circle"><i class="bi bi-person-fill"></i></span>
-                <span>{{ current_user.username }}</span>
-                <span class="user-role-badge">({{ current_user.role }})</span>
+                <span>{{ current_user.doctor_name if current_user.doctor_name else current_user.username }}</span>
+                <span class="user-role-badge">({{ current_user.clinic_name if current_user.clinic_name else (current_user.phone_number or current_user.role) }})</span>
             </div>
 
             {% if current_user.is_administrator() %}

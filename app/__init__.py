@@ -27,7 +27,10 @@ def create_app(config_name=None):
     @app.context_processor
     def inject_global_vars():
         user = None
-        if '_user_id' in session:
+        if '_account_id' in session:
+            from app.models import Account
+            user = db.session.get(Account, session['_account_id'])
+        elif '_user_id' in session:
             user = db.session.get(User, session['_user_id'])
         return dict(current_user=user)
 
@@ -37,7 +40,7 @@ def create_app(config_name=None):
 
     @app.route('/')
     def root():
-        if '_user_id' in session:
+        if '_account_id' in session or '_user_id' in session:
             return redirect(url_for('patients.patients_list'))
         return redirect(url_for('auth.login'))
 

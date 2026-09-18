@@ -2,7 +2,7 @@ from datetime import datetime, date, time
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, abort
 from app.extensions import db
 from app.models import (
-    User, Doctor, Patient, PatientPhone, Encounter, EncounterHistory,
+    Account, User, Doctor, Patient, PatientPhone, Encounter, EncounterHistory,
     EncounterVital, EncounterDiagnosis, Prescription, PrescriptionItem,
     Investigation, Procedure, Voucher, VoucherItem, Payment, Appointment,
     InventoryItem, InventoryTransaction, InventoryCategory,
@@ -36,44 +36,138 @@ all_blueprints = [
 # ==========================================
 # 1. AUTHENTICATION ROUTES
 # ==========================================
+# 1. AUTHENTICATION & CLINIC ACCOUNT ROUTES
+# ==========================================
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    if '_user_id' in session:
+    if '_account_id' in session or '_user_id' in session:
         return redirect(url_for('patients.patients_list'))
 
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+        identifier = (request.form.get('username') or request.form.get('phone_number') or '').strip()
         password = request.form.get('password', '')
 
-        user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):
-            if not user.is_active:
-                flash('Your account has been deactivated. Please contact an administrator.', 'danger')
+        # 1. Try finding in Account by phone_number or clinic_name
+        account = Account.query.filter(
+            (Account.phone_number == identifier) | (Account.clinic_name == identifier)
+        ).first()
+
+        if account and account.check_password(password):
+            if not account.is_active:
+                flash('Your clinic account has been deactivated. Please contact support.', 'danger')
                 return render_template('auth/login.html')
 
             session.clear()
-            session['_user_id'] = user.id
-            session['user_role'] = user.role
-            session['username'] = user.username
+            session['_account_id'] = account.id
+            session['phone_number'] = account.phone_number
+            session['username'] = account.doctor_name or account.clinic_name or account.phone_number
+            session['clinic_name'] = account.clinic_name
+            session['user_role'] = 'CLINIC_OWNER'
 
-            AuditService.log('LOGIN', 'User', user.id, f"User {user.username} logged in successfully.", user_id=user.id)
-            flash(f'Welcome back, {user.username}!', 'success')
+            AuditService.log('LOGIN', 'Account', account.id, f"Clinic account {account.phone_number} logged in.")
+            flash(f"Welcome back to {account.clinic_name}!", 'success')
             next_url = request.args.get('next')
             if next_url and next_url.startswith('/'):
                 return redirect(next_url)
             return redirect(url_for('patients.patients_list'))
-        else:
-            flash('Invalid username or password.', 'danger')
+
+        # 2. Fallback: Try User table (e.g. admin or seed user)
+        user = User.query.filter_by(username=identifier).first()
+        if user and user.check_password(password):
+            if not user.is_active:
+                flash('Your account has been deactivated.', 'danger')
+                return render_template('auth/login.html')
+
+            session.clear()
+            session['_user_id'] = user.id
+            session['username'] = user.username
+            session['user_role'] = user.role
+
+            AuditService.log('LOGIN', 'User', user.id, f"User {user.username} logged in.", user_id=user.id)
+            flash(f"Welcome back, {user.username}!", 'success')
+            next_url = request.args.get('next')
+            if next_url and next_url.startswith('/'):
+                return redirect(next_url)
+            return redirect(url_for('patients.patients_list'))
+
+        flash('Invalid phone number/username or password.', 'danger')
 
     return render_template('auth/login.html')
 
 
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if '_account_id' in session or '_user_id' in session:
+        return redirect(url_for('patients.patients_list'))
+
+    if request.method == 'POST':
+        phone_number = request.form.get('phone_number', '').strip()
+        clinic_name = request.form.get('clinic_name', '').strip() or 'Central Clinic'
+        doctor_name = request.form.get('doctor_name', '').strip() or 'Doctor'
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        if not phone_number:
+            flash('Please enter your clinic mobile phone number.', 'danger')
+            return render_template('auth/register.html', phone_number=phone_number, clinic_name=clinic_name, doctor_name=doctor_name)
+
+        if not password or len(password) < 4:
+            flash('Password must be at least 4 characters long.', 'danger')
+            return render_template('auth/register.html', phone_number=phone_number, clinic_name=clinic_name, doctor_name=doctor_name)
+
+        if password != confirm_password:
+            flash('Passwords do not match.', 'danger')
+            return render_template('auth/register.html', phone_number=phone_number, clinic_name=clinic_name, doctor_name=doctor_name)
+
+        existing = Account.query.filter_by(phone_number=phone_number).first()
+        if existing:
+            flash('An account with this phone number already exists. Please log in.', 'warning')
+            return redirect(url_for('auth.login'))
+
+        # Create new clinic account
+        new_acc = Account(
+            phone_number=phone_number,
+            clinic_name=clinic_name,
+            doctor_name=doctor_name
+        )
+        new_acc.set_password(password)
+        db.session.add(new_acc)
+
+        # Also ensure a default doctor profile exists for this doctor name
+        existing_doc = Doctor.query.filter_by(name=doctor_name).first()
+        if not existing_doc:
+            doc = Doctor(
+                name=doctor_name,
+                title='Dr.',
+                specialty='General Medicine',
+                phone=phone_number,
+                is_active=True
+            )
+            db.session.add(doc)
+
+        db.session.commit()
+
+        # Log in automatically
+        session.clear()
+        session['_account_id'] = new_acc.id
+        session['phone_number'] = new_acc.phone_number
+        session['username'] = new_acc.doctor_name
+        session['clinic_name'] = new_acc.clinic_name
+        session['user_role'] = 'CLINIC_OWNER'
+
+        AuditService.log('REGISTER', 'Account', new_acc.id, f"Created new clinic account for {phone_number} ({clinic_name})")
+        flash(f"Welcome! Your clinic account has been created for {clinic_name}.", 'success')
+        return redirect(url_for('patients.patients_list'))
+
+    return render_template('auth/register.html')
+
+
 @auth_bp.route('/logout')
 def logout():
-    user_id = session.get('_user_id')
-    if user_id:
-        AuditService.log('LOGOUT', 'User', user_id, "User logged out.", user_id=user_id)
+    acc_id = session.get('_account_id') or session.get('_user_id')
+    if acc_id:
+        AuditService.log('LOGOUT', 'Account', acc_id, "User logged out.")
     session.clear()
     flash('You have been logged out successfully.', 'info')
     return redirect(url_for('auth.login'))

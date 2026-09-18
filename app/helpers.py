@@ -20,34 +20,27 @@ from app.models import (
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if '_user_id' not in session:
+        if '_account_id' not in session and '_user_id' not in session:
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('auth.login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
 
-def role_required(allowed_roles):
+def role_required(allowed_roles=None):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if '_user_id' not in session:
+            # Role & permission restrictions removed for one-account-one-clinic architecture
+            if '_account_id' not in session and '_user_id' not in session:
                 return redirect(url_for('auth.login', next=request.url))
-            user = db.session.get(User, session['_user_id'])
-            if not user or not user.is_active:
-                session.clear()
-                flash('User account is inactive.', 'danger')
-                return redirect(url_for('auth.login'))
-            if user.role not in allowed_roles:
-                flash('You do not have permission to access this resource.', 'danger')
-                return redirect(url_for('patients.patients_list'))
             return f(*args, **kwargs)
         return decorated_function
     return decorator
 
 
 def admin_required(f):
-    return role_required(['ADMINISTRATOR'])(f)
+    return role_required()(f)
 
 
 # ==========================================
@@ -59,17 +52,13 @@ class AuditService:
     def log(action, entity_type, entity_id=None, summary=None, user_id=None):
         """Creates a lightweight clinical audit trail record."""
         try:
-            if user_id is None and '_user_id' in session:
-                user_id = session.get('_user_id')
-
-            username = None
-            if user_id:
-                u = db.session.get(User, user_id)
-                username = u.username if u else None
+            username = session.get('username')
+            if user_id is None:
+                user_id = session.get('_user_id') or session.get('_account_id')
 
             log_entry = AuditLog(
-                user_id=user_id,
-                user_username=username,
+                user_id=user_id if isinstance(user_id, int) else None,
+                user_username=username or 'Clinic Account',
                 action=action,
                 entity_type=entity_type,
                 entity_id=str(entity_id) if entity_id is not None else None,

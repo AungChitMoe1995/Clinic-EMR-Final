@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Register Clinic Account — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-6 col-lg-5 col-sm-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-header text-white text-center py-4" style="background-color: var(--clinic-primary);">
+                <div class="clinic-brand-icon mx-auto mb-2" style="width: 44px; height: 44px; font-size: 1.4rem; background-color: rgba(255,255,255,0.18);">
+                    <i class="bi bi-hospital"></i>
+                </div>
+                <h5 class="mb-1 fw-bold tracking-tight">CREATE CLINIC ACCOUNT</h5>
+                <small class="text-light opacity-75">One Account &bull; One Clinic EMR System</small>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="phone_number" class="form-label fw-semibold">Mobile Phone Number <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-telephone text-muted"></i></span>
+                            <input type="text" class="form-control" id="phone_number" name="phone_number" required autofocus placeholder="e.g. 09123456789" value="{{ phone_number or '' }}">
+                        </div>
+                        <small class="text-muted">Used as your primary login identifier.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="clinic_name" class="form-label fw-semibold">Clinic / Practice Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-building text-muted"></i></span>
+                            <input type="text" class="form-control" id="clinic_name" name="clinic_name" placeholder="e.g. Central Care Clinic" value="{{ clinic_name or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="doctor_name" class="form-label fw-semibold">Doctor / Clinician Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-person-badge text-muted"></i></span>
+                            <input type="text" class="form-control" id="doctor_name" name="doctor_name" placeholder="e.g. Dr. Aung Kyaw" value="{{ doctor_name or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-4">
+                        <div class="col-md-6">
+                            <label for="password" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-lock text-muted"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" required placeholder="Min 4 characters">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="confirm_password" class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-lock-fill text-muted"></i></span>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required placeholder="Repeat password">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm justify-content-center">
+                        <i class="bi bi-check2-circle"></i> Create & Launch Clinic
+                    </button>
+                </form>
+
+                <div class="text-center mt-3 pt-3 border-top">
+                    <span class="text-muted small">Already have an account?</span>
+                    <a href="{{ url_for('auth.login') }}" class="small fw-semibold ms-1" style="color: var(--clinic-primary-container);">
+                        Sign In
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer bg-light text-center py-2 text-muted small">
+                Data saved directly to Waifly Cloud MariaDB
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

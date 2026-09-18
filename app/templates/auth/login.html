@@ -1,45 +1,54 @@
 {% extends "base.html" %}
 
-{% block title %}Login — Myanmar Clinic EMR{% endblock %}
+{% block title %}Sign In — Myanmar Clinic EMR{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center align-items-center" style="min-height: 75vh;">
-    <div class="col-md-4 col-sm-8">
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-5 col-lg-4 col-sm-8">
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-dark text-white text-center py-3">
-                <h5 class="mb-0 fw-bold"><i class="bi bi-hospital"></i> MYANMAR CLINIC EMR</h5>
-                <small class="text-secondary">Clinical & Practice Management System</small>
+            <div class="card-header text-white text-center py-4" style="background-color: var(--clinic-primary);">
+                <div class="clinic-brand-icon mx-auto mb-2" style="width: 44px; height: 44px; font-size: 1.4rem; background-color: rgba(255,255,255,0.18);">
+                    <i class="bi bi-hospital"></i>
+                </div>
+                <h5 class="mb-1 fw-bold tracking-tight">MYANMAR CLINIC EMR</h5>
+                <small class="text-light opacity-75">One-Account Clinic Management</small>
             </div>
             <div class="card-body p-4">
                 <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="mb-3">
-                        <label for="username" class="form-label fw-semibold">Username</label>
+                        <label for="username" class="form-label fw-semibold">Phone Number or Username</label>
                         <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-person"></i></span>
-                            <input type="text" class="form-control" id="username" name="username" required autofocus placeholder="Enter your username">
+                            <span class="input-group-text bg-light"><i class="bi bi-telephone text-muted"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" required autofocus placeholder="e.g. 09123456789 or admin">
                         </div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="password" class="form-label fw-semibold">Password</label>
                         <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                            <input type="password" class="form-control" id="password" name="password" required placeholder="Enter your password">
+                            <span class="input-group-text bg-light"><i class="bi bi-lock text-muted"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" required placeholder="Enter password">
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
-                        <i class="bi bi-box-arrow-in-right"></i> Sign In
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm justify-content-center">
+                        <i class="bi bi-box-arrow-in-right"></i> Sign In to Clinic
                     </button>
                 </form>
+
+                <div class="text-center mt-3 pt-3 border-top">
+                    <span class="text-muted small">Need a new clinic account?</span>
+                    <a href="{{ url_for('auth.register') }}" class="small fw-semibold ms-1" style="color: var(--clinic-primary-container);">
+                        Create Account
+                    </a>
+                </div>
             </div>
-            <div class="card-footer bg-light text-center py-2 text-muted" style="font-size: 0.8rem;">
-                Authorized clinical personnel only.
+            <div class="card-footer bg-light text-center py-2 text-muted small">
+                <i class="bi bi-shield-lock text-success me-1"></i> Connected to Waifly Cloud Database
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-

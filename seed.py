@@ -3,7 +3,7 @@ from datetime import datetime, date
 from app import create_app
 from app.extensions import db
 from app.models import (
-    User, Doctor, RegistrationNumberSetting, SirNameSetting,
+    Account, User, Doctor, RegistrationNumberSetting, SirNameSetting,
     PatientFieldSetting, SystemSetting, InventoryCategory,
     InventoryItem, InventoryTransaction
 )
@@ -76,8 +76,21 @@ def seed_database():
                 db.session.add(PatientFieldSetting(field_name=fname, label=label, is_required=is_req, is_visible=True))
         print("Seeded patient field requirement settings.")
 
-        # 5. Default Users & Doctor Profiles (Requirement 7 & 88)
-        # Admin
+        # 5. Default Users & Clinic Accounts
+        # Clinic Account (One-Account-One-Clinic)
+        acc = Account.query.filter_by(phone_number='09123456789').first()
+        if not acc:
+            acc = Account(
+                phone_number='09123456789',
+                clinic_name='Central Clinic (Yangon)',
+                doctor_name='Dr. Aung Kyaw',
+                is_active=True
+            )
+            acc.set_password('password123')
+            db.session.add(acc)
+            print("Seeded Default Clinic Account: Phone=09123456789 / Password=password123")
+
+        # Admin User
         admin = User.query.filter_by(username='admin').first()
         if not admin:
             admin = User(username='admin', role='ADMINISTRATOR', is_active=True)
@@ -106,7 +119,7 @@ def seed_database():
                 name='Aung Kyaw',
                 title='Dr.',
                 specialty='General Medicine',
-                phone='095123456',
+                phone='09123456789',
                 email='dr.aung@clinic.com',
                 is_active=True
             )
