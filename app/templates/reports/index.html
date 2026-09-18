@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Reports — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-bar-graph"></i> Clinical & Practice Reports</h5>
+        <small class="text-muted">Export and review clinic audit logs, visits, prescriptions, and financials</small>
+    </div>
+    <button type="button" class="btn btn-outline-dark btn-sm" onclick="window.print();">
+        <i class="bi bi-printer"></i> Print Report
+    </button>
+</div>
+
+<!-- Report Selection & Filters -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ url_for('reports.index') }}" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Report Type</label>
+                <select name="type" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="registrations" {% if report_type == 'registrations' %}selected{% endif %}>Patient Registrations</option>
+                    <option value="encounters" {% if report_type == 'encounters' %}selected{% endif %}>Encounters / Consultations</option>
+                    <option value="appointments" {% if report_type == 'appointments' %}selected{% endif %}>Appointments</option>
+                    <option value="investigations" {% if report_type == 'investigations' %}selected{% endif %}>Investigations</option>
+                    <option value="prescriptions" {% if report_type == 'prescriptions' %}selected{% endif %}>Prescriptions / Meds</option>
+                    <option value="billing" {% if report_type == 'billing' %}selected{% endif %}>Billing / Vouchers</option>
+                    <option value="collections" {% if report_type == 'collections' %}selected{% endif %}>Collections / Payments</option>
+                    <option value="inventory" {% if report_type == 'inventory' %}selected{% endif %}>Inventory & Stock</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">From Date</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">To Date</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+            </div>
+
+            {% if report_type in ['encounters', 'appointments'] %}
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Doctor</label>
+                <select name="doctor_id" class="form-select form-select-sm">
+                    <option value="">All Doctors</option>
+                    {% for doc in doctors %}
+                        <option value="{{ doc.id }}" {% if doctor_id == doc.id %}selected{% endif %}>{{ doc.display_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">Generate Report</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Report Results Display -->
+<div class="card border-0 shadow-sm p-3">
+    <h6 class="fw-bold text-primary mb-3">
+        Report: {{ report_type|capitalize }} ({{ results|length }} records found)
+    </h6>
+
+    <div class="table-responsive">
+        {% if report_type == 'registrations' %}
+            <table class="table table-sm table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr><th>Date</th><th>Reg No</th><th>Name</th><th>Gender</th><th>Age</th><th>Phone</th><th>Township</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in results %}
+                    <tr>
+                        <td>{{ p.created_at.strftime('%d %b %Y') }}</td>
+                        <td class="fw-bold">{{ p.registration_number }}</td>
+                        <td>{{ p.full_name }}</td>
+                        <td>{{ p.gender }}</td>
+                        <td>{{ p.age_formatted }}</td>
+                        <td>{{ p.primary_phone }}</td>
+                        <td>{{ p.city_township or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif report_type == 'encounters' %}
+            <table class="table table-sm table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr><th>Date</th><th>Patient</th><th>Doctor</th><th>Diagnosis</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    {% for enc in results %}
+                    <tr>
+                        <td>{{ enc.encounter_date.strftime('%d %b %Y, %H:%M') }}</td>
+                        <td>{{ enc.patient.full_name }} ({{ enc.patient.registration_number }})</td>
+                        <td>{{ enc.doctor.display_name if enc.doctor else 'Unassigned' }}</td>
+                        <td>{{ enc.diagnoses_summary }}</td>
+                        <td><span class="badge bg-success">{{ enc.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif report_type == 'billing' %}
+            <table class="table table-sm table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr><th>Voucher No</th><th>Date</th><th>Patient</th><th>Total (MMK)</th><th>Paid</th><th>Balance</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    {% for v in results %}
+                    <tr>
+                        <td class="fw-bold">{{ v.voucher_number }}</td>
+                        <td>{{ v.voucher_date.strftime('%d %b %Y') }}</td>
+                        <td>{{ v.patient.full_name }}</td>
+                        <td>{{ "%.2f"|format(v.total) }}</td>
+                        <td class="text-success">{{ "%.2f"|format(v.total_paid) }}</td>
+                        <td class="{% if v.balance_due > 0 %}text-danger fw-bold{% endif %}">{{ "%.2f"|format(v.balance_due) }}</td>
+                        <td><span class="badge badge-{{ v.status }}">{{ v.status|capitalize }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif report_type == 'collections' %}
+            <table class="table table-sm table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr><th>Date</th><th>Voucher No</th><th>Method</th><th>Amount (MMK)</th><th>Reference</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in results %}
+                    <tr>
+                        <td>{{ p.payment_date.strftime('%d %b %Y, %H:%M') }}</td>
+                        <td>{{ p.voucher.voucher_number }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ p.payment_method }}</span></td>
+                        <td class="fw-bold text-success">{{ "%.2f"|format(p.amount) }}</td>
+                        <td>{{ p.reference or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif report_type == 'inventory' %}
+            <table class="table table-sm table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr><th>Item Name</th><th>Generic</th><th>Stock Qty</th><th>Reorder Level</th><th>Unit Price</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    {% for itm in results %}
+                    <tr class="{% if itm.is_low_stock %}table-danger-subtle{% endif %}">
+                        <td class="fw-bold">{{ itm.item_name }}</td>
+                        <td>{{ itm.generic_name or '—' }}</td>
+                        <td class="fw-bold {% if itm.is_low_stock %}text-danger{% endif %}">{{ itm.quantity }} {{ itm.unit or '' }}</td>
+                        <td>{{ itm.reorder_level }}</td>
+                        <td>{{ "%.2f"|format(itm.selling_price) }} MMK</td>
+                        <td><span class="badge {% if itm.is_low_stock %}bg-danger{% else %}bg-success{% endif %}">{{ 'Low Stock' if itm.is_low_stock else 'Normal' }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% else %}
+            <div class="text-muted text-center py-4">Report output ready.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

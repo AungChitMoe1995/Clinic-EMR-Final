@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-gear-fill"></i> Clinic & System Settings</h5>
+        <small class="text-muted">Configure registration number formatting, Myanmar naming, and mandatory fields</small>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 1. Patient Registration Number Configuration (Requirement 11) -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-2">
+                <h6 class="fw-bold mb-0 text-primary">
+                    <i class="bi bi-123"></i> 1. Patient Registration Number Format
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <!-- Live Preview Callout (Requirement 11) -->
+                <div class="alert alert-primary py-2 px-3 mb-3">
+                    <div class="small fw-semibold text-uppercase text-muted">Real-time Live Preview:</div>
+                    <div class="fs-5 fw-bold text-dark font-monospace" id="reg_live_preview">{{ preview_no }}</div>
+                    <small class="text-muted">Preview only. Actual allocation happens safely server-side upon registration.</small>
+                </div>
+
+                <form method="POST" action="{{ url_for('settings.index') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="save_reg_settings">
+
+                    <div class="mb-3">
+                        <label for="format_pattern" class="form-label small fw-semibold">Format Pattern</label>
+                        <input type="text" name="format_pattern" id="format_pattern" class="form-control form-control-sm font-monospace"
+                               value="{{ reg_setting.format_pattern }}" required>
+                        <small class="text-muted">
+                            Supported tokens: <code>{NUMBER}</code>, <code>{YYYY}</code>, <code>{YY}</code>, <code>{MM}</code>, <code>{DD}</code>
+                        </small>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <label for="next_number" class="form-label small fw-semibold">Next Number</label>
+                            <input type="number" name="next_number" id="next_number" class="form-control form-control-sm"
+                                   value="{{ reg_setting.next_number }}" min="1" required>
+                        </div>
+                        <div class="col-4">
+                            <label for="increment_amount" class="form-label small fw-semibold">Increment</label>
+                            <input type="number" name="increment_amount" id="increment_amount" class="form-control form-control-sm"
+                                   value="{{ reg_setting.increment_amount }}" min="1" required>
+                        </div>
+                        <div class="col-4">
+                            <label for="padding" class="form-label small fw-semibold">Padding (Zeros)</label>
+                            <input type="number" name="padding" id="padding" class="form-control form-control-sm"
+                                   value="{{ reg_setting.padding }}" min="1" max="10" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm">
+                        <i class="bi bi-save"></i> Save Numbering Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. System Defaults (State/Region) (Requirement 18) -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-2">
+                <h6 class="fw-bold mb-0 text-primary">
+                    <i class="bi bi-sliders"></i> 2. System Defaults
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <form method="POST" action="{{ url_for('settings.index') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="save_system_settings">
+
+                    <div class="mb-3">
+                        <label for="default_state_region" class="form-label small fw-semibold">Default State / Region</label>
+                        <input type="text" name="default_state_region" id="default_state_region" class="form-control form-control-sm"
+                               value="{{ default_state }}" required>
+                        <small class="text-muted">Pre-fills the State/Region field on patient registration.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm">
+                        <i class="bi bi-save"></i> Save System Defaults
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Sir Names & Gender Mappings (Requirement 13) -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-2">
+                <h6 class="fw-bold mb-0 text-primary">
+                    <i class="bi bi-person-badge"></i> 3. Myanmar Sir Names & Gender Mappings
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="table-responsive mb-3" style="max-height: 260px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle mb-0 small">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Sir Name</th>
+                                <th>Default Gender</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sn in sir_names %}
+                            <tr>
+                                <td class="fw-bold">{{ sn.title }}</td>
+                                <td>
+                                    <span class="badge {% if sn.default_gender == 'Male' %}bg-info text-dark{% else %}bg-danger-subtle text-danger{% endif %}">
+                                        {{ sn.default_gender }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <form method="POST" action="{{ url_for('settings.delete_sir_name', sn_id=sn.id) }}" style="display:inline;" onsubmit="return confirm('Delete this Sir Name?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-link text-danger p-0 small text-decoration-none">&times; Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Add new Sir Name -->
+                <form method="POST" action="{{ url_for('settings.index') }}" class="row g-2 align-items-center">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="add_sir_name">
+                    <div class="col-5">
+                        <input type="text" name="sir_name_title" class="form-control form-control-sm" placeholder="Title (e.g. Sayagyi)" required>
+                    </div>
+                    <div class="col-4">
+                        <select name="sir_name_gender" class="form-select form-select-sm">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="col-3">
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100">+ Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Mandatory / Required Patient Fields (Requirement 16) -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-2">
+                <h6 class="fw-bold mb-0 text-primary">
+                    <i class="bi bi-card-checklist"></i> 4. Mandatory Patient Registration Fields
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <form method="POST" action="{{ url_for('settings.index') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="save_field_settings">
+
+                    <p class="small text-muted mb-2">Configure which patient fields are strictly required during registration:</p>
+
+                    <div class="list-group list-group-flush mb-3 small">
+                        {% for f in field_settings %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            <span>{{ f.label }}</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" name="req_{{ f.field_name }}" value="1"
+                                       id="f_{{ f.field_name }}" {% if f.is_required %}checked{% endif %}
+                                       {% if f.field_name in ['sir_name', 'patient_name', 'gender', 'phone_number'] %}disabled checked{% endif %}>
+                                <label class="form-check-label" for="f_{{ f.field_name }}">Required</label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm">
+                        <i class="bi bi-save"></i> Save Field Rules
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

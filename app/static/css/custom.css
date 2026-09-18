@@ -1,0 +1,271 @@
+/* Myanmar Clinic EMR - Custom Stylesheet */
+
+:root {
+    --clinic-primary: #155e75;      /* Deep Teal */
+    --clinic-primary-hover: #0e7490;
+    --clinic-secondary: #0f766e;
+    --clinic-bg: #f8fafc;
+    --clinic-card-bg: #ffffff;
+    --clinic-text: #1e293b;
+    --clinic-muted: #64748b;
+    --clinic-border: #e2e8f0;
+    --navbar-height: 48px;
+}
+
+body {
+    background-color: var(--clinic-bg);
+    color: var(--clinic-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding-top: var(--navbar-height);
+    min-height: 100vh;
+}
+
+/* Thin persistent top navbar (locked: NO left sidebar, compact, persistent) */
+.clinic-navbar {
+    height: var(--navbar-height);
+    background-color: #0f172a;
+    border-bottom: 2px solid var(--clinic-primary);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+}
+
+.clinic-brand {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    text-decoration: none;
+    margin-right: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    letter-spacing: 0.5px;
+}
+
+.clinic-nav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.clinic-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #94a3b8;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.15s ease-in-out;
+}
+
+.clinic-nav-link:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.clinic-nav-link.active {
+    color: #ffffff;
+    background-color: var(--clinic-primary);
+    font-weight: 600;
+}
+
+.clinic-nav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.settings-gear-btn {
+    color: #94a3b8;
+    font-size: 1.15rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: color 0.15s;
+    text-decoration: none;
+}
+
+.settings-gear-btn:hover,
+.settings-gear-btn.active {
+    color: #38bdf8;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Patient Module View Toggle: [ Patients ] [ Encounters ] [ Appointments ] */
+.patient-view-toggle {
+    display: inline-flex;
+    background-color: #e2e8f0;
+    padding: 3px;
+    border-radius: 6px;
+    gap: 2px;
+}
+
+.patient-view-toggle .btn {
+    border: none;
+    font-size: 0.85rem;
+    padding: 0.35rem 1.1rem;
+    font-weight: 500;
+    color: #475569;
+    background-color: transparent;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+
+.patient-view-toggle .btn.active {
+    background-color: #ffffff;
+    color: var(--clinic-primary);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Four Big Cards on Patient Detail */
+.four-cards-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 992px) {
+    .four-cards-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.big-card {
+    background: #ffffff;
+    border: 1px solid var(--clinic-border);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    min-height: 380px;
+}
+
+.big-card-header {
+    padding: 0.85rem 1.2rem;
+    border-bottom: 1px solid var(--clinic-border);
+    background-color: #f8fafc;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.big-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.big-card-body {
+    padding: 1.2rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Encounter Workspace Desktop Layout */
+.encounter-desktop-layout {
+    display: grid;
+    grid-template-columns: 65% 35%;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .encounter-desktop-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.clinical-dominant-area {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.supporting-sidebar-area {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* Clinical hierarchy */
+.clinical-card {
+    background: #ffffff;
+    border: 1px solid var(--clinic-border);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.clinical-card-header {
+    background-color: #f1f5f9;
+    padding: 0.75rem 1.1rem;
+    border-bottom: 1px solid var(--clinic-border);
+    font-weight: 700;
+    font-size: 0.98rem;
+    color: #0f172a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.clinical-card-body {
+    padding: 1rem 1.1rem;
+}
+
+/* Form section grouping */
+.form-section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--clinic-primary);
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.4rem;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+}
+
+/* Phone list vertical display in table cell */
+.phone-cell-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.phone-cell-list .phone-item {
+    font-size: 0.85rem;
+    font-family: monospace;
+}
+
+/* Flash alerts */
+.flash-container {
+    position: fixed;
+    top: calc(var(--navbar-height) + 10px);
+    right: 20px;
+    z-index: 1060;
+    max-width: 420px;
+}
+
+/* Status badges */
+.badge-unpaid { background-color: #ef4444; color: white; }
+.badge-partially_paid { background-color: #f59e0b; color: white; }
+.badge-fully_paid { background-color: #10b981; color: white; }
+

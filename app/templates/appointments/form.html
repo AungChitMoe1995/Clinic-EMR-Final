@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Appointment — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-calendar-plus"></i> Schedule Appointment</h5>
+                <small class="text-muted">Book a clinic consultation for a patient</small>
+            </div>
+            <a href="{{ url_for('appointments.appointments_list') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to Appointments
+            </a>
+        </div>
+
+        <form method="POST" action="{{ url_for('appointments.new_appointment') }}" class="card border-0 shadow-sm p-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="patient_id" class="form-label small fw-semibold">Select Patient <span class="text-danger">*</span></label>
+                {% if selected_patient %}
+                    <div class="p-2 border rounded bg-light small fw-bold">
+                        {{ selected_patient.full_name }} ({{ selected_patient.registration_number }}) &mdash; {{ selected_patient.primary_phone }}
+                    </div>
+                    <input type="hidden" name="patient_id" value="{{ selected_patient.id }}">
+                {% else %}
+                    <select name="patient_id" id="patient_id" class="form-select form-select-sm" required>
+                        <option value="">-- Choose Patient --</option>
+                        {% for p in patients %}
+                            <option value="{{ p.id }}">{{ p.registration_number }} &mdash; {{ p.full_name }} ({{ p.primary_phone or 'No phone' }})</option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label for="appointment_date" class="form-label small fw-semibold">Appointment Date <span class="text-danger">*</span></label>
+                    <input type="date" name="appointment_date" id="appointment_date" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="appointment_time" class="form-label small fw-semibold">Appointment Time</label>
+                    <input type="time" name="appointment_time" id="appointment_time" class="form-control form-control-sm">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="doctor_id" class="form-label small fw-semibold">Assigned Doctor (Optional)</label>
+                <select name="doctor_id" id="doctor_id" class="form-select form-select-sm">
+                    <option value="">-- Leave Unassigned (Assign Later) --</option>
+                    {% for doc in doctors %}
+                        <option value="{{ doc.id }}">{{ doc.display_name }} ({{ doc.specialty or 'General Practice' }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="reason" class="form-label small fw-semibold">Reason for Visit</label>
+                <input type="text" name="reason" id="reason" class="form-control form-control-sm" placeholder="e.g. Follow-up, Fever, Routine Checkup">
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label small fw-semibold">Notes</label>
+                <textarea name="notes" id="notes" rows="2" class="form-control form-control-sm" placeholder="Optional receptionist or appointment notes..."></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('appointments.appointments_list') }}" class="btn btn-secondary btn-sm px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-sm px-4 shadow-sm">
+                    <i class="bi bi-calendar-check"></i> Book Appointment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

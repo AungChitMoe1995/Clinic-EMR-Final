@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Create Voucher — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-receipt"></i> Create Clinical Voucher</h5>
+                <small class="text-muted">Generate a billing voucher linked to Encounter #{{ encounter.id }}</small>
+            </div>
+            <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to Patient
+            </a>
+        </div>
+
+        <!-- Inferred Patient & Encounter Context (Requirement 77: never ask again) -->
+        <div class="card border-0 shadow-sm mb-3 bg-light">
+            <div class="card-body p-3">
+                <div class="row small">
+                    <div class="col-md-4">
+                        <strong>Patient:</strong> {{ patient.full_name }} ({{ patient.registration_number }})
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Encounter:</strong> #{{ encounter.id }} on {{ encounter.encounter_date.strftime('%d %b %Y, %I:%M %p') }}
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Doctor:</strong> {{ encounter.doctor.display_name if encounter.doctor else 'Unassigned' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('billing.new_voucher', encounter_id=encounter.id) }}" class="card border-0 shadow-sm p-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-cart-plus"></i> Billable Items / Services</h6>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-add-voucher-item">
+                    <i class="bi bi-plus-lg"></i> Add Item / Service
+                </button>
+            </div>
+
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered align-middle small mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50%;">Description / Service</th>
+                            <th style="width: 15%;">Qty</th>
+                            <th style="width: 18%;">Unit Price (MMK)</th>
+                            <th style="width: 17%;">Amount (MMK)</th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="voucher-items-tbody">
+                        <tr class="voucher-item-row">
+                            <td><input type="text" name="item_desc[]" class="form-control form-control-sm" placeholder="Consultation Fee / Medicine / Lab / Procedure" value="Doctor Consultation Fee" required></td>
+                            <td><input type="number" step="any" name="item_qty[]" class="form-control form-control-sm item-calc-qty" value="1" required></td>
+                            <td><input type="number" step="any" name="item_price[]" class="form-control form-control-sm item-calc-price" value="10000" required></td>
+                            <td><input type="text" class="form-control form-control-sm item-calc-amount" readonly value="10000.00"></td>
+                            <td><button type="button" class="btn btn-outline-danger btn-sm remove-row-btn">&times;</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Discount & Totals -->
+            <div class="row justify-content-end mb-3">
+                <div class="col-md-5">
+                    <div class="card border bg-light p-3 small">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <strong><span id="voucher_subtotal_display">10000.00</span> MMK</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Discount (MMK):</span>
+                            <input type="number" step="any" name="discount" id="voucher_discount" class="form-control form-control-sm text-end" style="width: 120px;" value="0">
+                        </div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between fs-6">
+                            <strong>Total Due:</strong>
+                            <strong class="text-primary"><span id="voucher_total_display">10000.00</span> MMK</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label small fw-semibold">Billing Notes</label>
+                <textarea name="notes" id="notes" rows="2" class="form-control form-control-sm" placeholder="Optional notes for this voucher..."></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-secondary btn-sm px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-sm px-4 shadow-sm">
+                    <i class="bi bi-receipt-cutoff"></i> Generate Voucher
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{% if item %}Edit Item: {{ item.item_name }}{% else %}Add Inventory Item{% endif %} — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-box-seam"></i> {% if item %}Edit Inventory Item{% else %}Register Inventory Item{% endif %}
+                </h5>
+                <small class="text-muted">Medicine and clinical supply catalog entry</small>
+            </div>
+            <a href="{{ url_for('inventory.inventory_list') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to Inventory
+            </a>
+        </div>
+
+        <form method="POST" action="{% if item %}{{ url_for('inventory.edit_item', item_id=item.id) }}{% else %}{{ url_for('inventory.new_item') }}{% endif %}" class="card border-0 shadow-sm p-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label for="item_name" class="form-label small fw-semibold">Item / Trade Name <span class="text-danger">*</span></label>
+                    <input type="text" name="item_name" id="item_name" class="form-control form-control-sm" placeholder="e.g. Paracetamol 500mg" required value="{{ item.item_name if item else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="generic_name" class="form-label small fw-semibold">Generic Name</label>
+                    <input type="text" name="generic_name" id="generic_name" class="form-control form-control-sm" placeholder="e.g. Acetaminophen" value="{{ item.generic_name if item else '' }}">
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label for="brand" class="form-label small fw-semibold">Brand / Manufacturer</label>
+                    <input type="text" name="brand" id="brand" class="form-control form-control-sm" placeholder="e.g. Biogesic, GSK" value="{{ item.brand if item else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="category_id" class="form-label small fw-semibold">Category</label>
+                    <select name="category_id" id="category_id" class="form-select form-select-sm">
+                        <option value="">-- General --</option>
+                        {% for c in categories %}
+                            <option value="{{ c.id }}" {% if item and item.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="unit" class="form-label small fw-semibold">Unit</label>
+                    <input type="text" name="unit" id="unit" class="form-control form-control-sm" placeholder="e.g. Tablet, Capsule, Bottle, Vial" value="{{ item.unit if item else 'Tablet' }}">
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label for="batch_number" class="form-label small fw-semibold">Batch Number</label>
+                    <input type="text" name="batch_number" id="batch_number" class="form-control form-control-sm" placeholder="e.g. B-20260901" value="{{ item.batch_number if item else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="expiry_date" class="form-label small fw-semibold">Expiry Date</label>
+                    <input type="date" name="expiry_date" id="expiry_date" class="form-control form-control-sm" value="{{ item.expiry_date.strftime('%Y-%m-%d') if item and item.expiry_date else '' }}">
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                {% if not item %}
+                <div class="col-md-3">
+                    <label for="quantity" class="form-label small fw-semibold">Initial Stock</label>
+                    <input type="number" step="any" name="quantity" id="quantity" class="form-control form-control-sm" value="0">
+                </div>
+                {% endif %}
+                <div class="col-md-3">
+                    <label for="purchase_price" class="form-label small fw-semibold">Purchase Price (MMK)</label>
+                    <input type="number" step="any" name="purchase_price" id="purchase_price" class="form-control form-control-sm" value="{{ item.purchase_price if item else '0' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="selling_price" class="form-label small fw-semibold">Selling Price (MMK)</label>
+                    <input type="number" step="any" name="selling_price" id="selling_price" class="form-control form-control-sm" value="{{ item.selling_price if item else '0' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="reorder_level" class="form-label small fw-semibold">Reorder Alert Level</label>
+                    <input type="number" step="any" name="reorder_level" id="reorder_level" class="form-control form-control-sm" value="{{ item.reorder_level if item else '10' }}">
+                </div>
+            </div>
+
+            {% if item %}
+            <div class="mb-3 form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="is_active" value="1" {% if item.is_active %}checked{% endif %}>
+                <label class="form-check-label small fw-semibold" for="is_active">Item is Active</label>
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <a href="{{ url_for('inventory.inventory_list') }}" class="btn btn-secondary btn-sm px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-sm px-4 shadow-sm">
+                    <i class="bi bi-check-circle"></i> Save Item
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

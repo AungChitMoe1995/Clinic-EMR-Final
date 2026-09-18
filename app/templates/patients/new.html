@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Register New Patient — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-person-plus"></i> Patient Registration</h5>
+                <small class="text-muted">Register a new patient into the clinic system</small>
+            </div>
+            <a href="{{ url_for('patients.patients_list') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to Patient List
+            </a>
+        </div>
+
+        <form method="POST" action="{{ url_for('patients.new_patient') }}" class="card border-0 shadow-sm p-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- SECTION 1: PERSONAL INFORMATION -->
+            <div class="form-section-title">
+                <i class="bi bi-person"></i> 1. Personal Information
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="sir_name" class="form-label small fw-semibold">
+                        Sir Name <span class="text-danger">*</span>
+                    </label>
+                    <select name="sir_name" id="sir_name" class="form-select form-select-sm" required>
+                        <option value="">-- Select Sir Name --</option>
+                        {% for s in sir_names %}
+                            <option value="{{ s.title }}" data-default-gender="{{ s.default_gender }}"
+                                {% if form_data.get('sir_name') == s.title %}selected{% endif %}>
+                                {{ s.title }} ({{ s.default_gender }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="patient_name" class="form-label small fw-semibold">
+                        Patient Name <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" name="patient_name" id="patient_name" class="form-control form-control-sm"
+                           placeholder="e.g. Aung Aung" required value="{{ form_data.get('patient_name', '') }}">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="gender" class="form-label small fw-semibold">
+                        Gender <span class="text-danger">*</span>
+                    </label>
+                    <select name="gender" id="gender" class="form-select form-select-sm" required>
+                        <option value="Male" {% if form_data.get('gender') == 'Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if form_data.get('gender') == 'Female' %}selected{% endif %}>Female</option>
+                    </select>
+                </div>
+
+                <!-- Calendar-aware Dynamic DOB & Age Sync (Requirement 22) -->
+                <div class="col-md-4">
+                    <label for="date_of_birth" class="form-label small fw-semibold">Date of Birth</label>
+                    <input type="date" name="date_of_birth" id="date_of_birth" class="form-control form-control-sm"
+                           value="{{ form_data.get('date_of_birth', '') }}">
+                </div>
+
+                <div class="col-md-8">
+                    <label class="form-label small fw-semibold">Dynamic Age (Years / Months / Days)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" id="age_years" name="age_years" class="form-control" placeholder="Years" min="0" value="{{ form_data.get('age_years', '') }}">
+                        <span class="input-group-text">Y</span>
+                        <input type="number" id="age_months" name="age_months" class="form-control" placeholder="Months" min="0" max="11" value="{{ form_data.get('age_months', '') }}">
+                        <span class="input-group-text">M</span>
+                        <input type="number" id="age_days" name="age_days" class="form-control" placeholder="Days" min="0" max="31" value="{{ form_data.get('age_days', '') }}">
+                        <span class="input-group-text">D</span>
+                    </div>
+                    <small class="text-muted d-block mt-1">Calculated age: <strong id="age_display_text" class="text-primary">—</strong></small>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="marital_status" class="form-label small fw-semibold">Marital Status</label>
+                    <select name="marital_status" id="marital_status" class="form-select form-select-sm">
+                        <option value="">-- Unspecified --</option>
+                        <option value="Single" {% if form_data.get('marital_status') == 'Single' %}selected{% endif %}>Single</option>
+                        <option value="Married" {% if form_data.get('marital_status') == 'Married' %}selected{% endif %}>Married</option>
+                        <option value="Divorced" {% if form_data.get('marital_status') == 'Divorced' %}selected{% endif %}>Divorced</option>
+                        <option value="Widowed" {% if form_data.get('marital_status') == 'Widowed' %}selected{% endif %}>Widowed</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="occupation" class="form-label small fw-semibold">Occupation</label>
+                    <input type="text" name="occupation" id="occupation" class="form-control form-control-sm"
+                           placeholder="Occupation" value="{{ form_data.get('occupation', '') }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label for="blood_group" class="form-label small fw-semibold">Blood Group</label>
+                    <select name="blood_group" id="blood_group" class="form-select form-select-sm">
+                        <option value="">-- Unknown --</option>
+                        <option value="A+" {% if form_data.get('blood_group') == 'A+' %}selected{% endif %}>A+</option>
+                        <option value="A-" {% if form_data.get('blood_group') == 'A-' %}selected{% endif %}>A-</option>
+                        <option value="B+" {% if form_data.get('blood_group') == 'B+' %}selected{% endif %}>B+</option>
+                        <option value="B-" {% if form_data.get('blood_group') == 'B-' %}selected{% endif %}>B-</option>
+                        <option value="AB+" {% if form_data.get('blood_group') == 'AB+' %}selected{% endif %}>AB+</option>
+                        <option value="AB-" {% if form_data.get('blood_group') == 'AB-' %}selected{% endif %}>AB-</option>
+                        <option value="O+" {% if form_data.get('blood_group') == 'O+' %}selected{% endif %}>O+</option>
+                        <option value="O-" {% if form_data.get('blood_group') == 'O-' %}selected{% endif %}>O-</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="guardian_name" class="form-label small fw-semibold">Guardian Name</label>
+                    <input type="text" name="guardian_name" id="guardian_name" class="form-control form-control-sm"
+                           placeholder="Guardian Name" value="{{ form_data.get('guardian_name', '') }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="guardian_relationship" class="form-label small fw-semibold">Guardian Relationship</label>
+                    <input type="text" name="guardian_relationship" id="guardian_relationship" class="form-control form-control-sm"
+                           placeholder="e.g. Father, Mother, Spouse" value="{{ form_data.get('guardian_relationship', '') }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="guardian_phone" class="form-label small fw-semibold">Guardian Phone</label>
+                    <input type="text" name="guardian_phone" id="guardian_phone" class="form-control form-control-sm"
+                           placeholder="Guardian Phone" value="{{ form_data.get('guardian_phone', '') }}">
+                </div>
+            </div>
+
+            <!-- SECTION 2: CONTACT INFORMATION -->
+            <div class="form-section-title">
+                <i class="bi bi-telephone"></i> 2. Contact Information
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="phone_number" class="form-label small fw-semibold">
+                        Phone Number(s) <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" name="phone_number" id="phone_number" class="form-control form-control-sm"
+                           placeholder="e.g. 09123456789, 09987654321 (separate multiple by comma)" required
+                           value="{{ form_data.get('phone_number', '') }}">
+                    <small class="text-muted">Separate multiple numbers with commas. Each is stored as a normalized record.</small>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="email" class="form-label small fw-semibold">Email</label>
+                    <input type="email" name="email" id="email" class="form-control form-control-sm"
+                           placeholder="Email address" value="{{ form_data.get('email', '') }}">
+                </div>
+
+                <div class="col-md-12">
+                    <label for="address" class="form-label small fw-semibold">Address</label>
+                    <input type="text" name="address" id="address" class="form-control form-control-sm"
+                           placeholder="Street address / Housing" value="{{ form_data.get('address', '') }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="city_township" class="form-label small fw-semibold">City / Township</label>
+                    <input type="text" name="city_township" id="city_township" class="form-control form-control-sm"
+                           placeholder="Township (e.g. Hlaing, Kamayut, Sanchaung)" value="{{ form_data.get('city_township', '') }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="state_region" class="form-label small fw-semibold">State / Region</label>
+                    <input type="text" name="state_region" id="state_region" class="form-control form-control-sm"
+                           placeholder="State/Region" value="{{ form_data.get('state_region', default_state) }}">
+                </div>
+            </div>
+
+            <!-- SECTION 3: IDENTIFICATION -->
+            <div class="form-section-title">
+                <i class="bi bi-card-heading"></i> 3. Identification
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="nrc_number" class="form-label small fw-semibold">NRC Number</label>
+                    <input type="text" name="nrc_number" id="nrc_number" class="form-control form-control-sm"
+                           placeholder="e.g. 12/LAKANA(N)123456" value="{{ form_data.get('nrc_number', '') }}">
+                </div>
+            </div>
+
+            <!-- SECTION 4: PATIENT SUMMARY & NOTES -->
+            <div class="form-section-title">
+                <i class="bi bi-journal-text"></i> 4. Patient Summary & Notes
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="patient_summary" class="form-label small fw-semibold">Patient Summary</label>
+                    <textarea name="patient_summary" id="patient_summary" rows="3" class="form-control form-control-sm"
+                              placeholder="Concise permanent clinical summary / chronic conditions...">{{ form_data.get('patient_summary', '') }}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label for="notes" class="form-label small fw-semibold">Administrative Notes</label>
+                    <textarea name="notes" id="notes" rows="3" class="form-control form-control-sm"
+                              placeholder="General administrative or clinic notes...">{{ form_data.get('notes', '') }}</textarea>
+                </div>
+            </div>
+
+            <!-- INITIAL ENCOUNTER OPTION (Requirement 24) -->
+            <div class="mt-4 p-3 bg-light rounded border">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="create_initial_encounter" id="create_initial_encounter" value="1">
+                    <label class="form-check-label fw-bold text-dark" for="create_initial_encounter">
+                        <i class="bi bi-journal-plus text-primary"></i> Create Initial Encounter automatically
+                    </label>
+                </div>
+                <small class="text-muted ps-4 d-block">
+                    If checked, saving will immediately open the full Encounter workspace. If cancelled or left empty, the encounter is discarded while the patient remains registered.
+                </small>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a href="{{ url_for('patients.patients_list') }}" class="btn btn-secondary btn-sm px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-sm px-4 shadow-sm">
+                    <i class="bi bi-check-circle"></i> Save Patient
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

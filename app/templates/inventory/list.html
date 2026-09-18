@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-box-seam"></i> Clinic Inventory & Pharmacy</h5>
+        <small class="text-muted">Stock tracking, batch numbers, reorder alerts</small>
+    </div>
+    <a href="{{ url_for('inventory.new_item') }}" class="btn btn-primary btn-sm px-3 shadow-sm">
+        <i class="bi bi-plus-lg"></i> Add Inventory Item
+    </a>
+</div>
+
+<!-- Search & Filters -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ url_for('inventory.inventory_list') }}" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Search by item name, generic, or brand..." value="{{ query_str }}">
+            </div>
+            <div class="col-md-3">
+                <select name="category_id" class="form-select form-select-sm">
+                    <option value="">All Categories</option>
+                    {% for c in categories %}
+                        <option value="{{ c.id }}" {% if category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check form-switch pt-1">
+                    <input class="form-check-input" type="checkbox" name="low_stock" id="low_stock" value="1" {% if low_stock %}checked{% endif %}>
+                    <label class="form-check-label small fw-semibold text-danger" for="low_stock">Low Stock Only</label>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-secondary btn-sm w-100">Filter</button>
+                {% if query_str or category_id or low_stock %}
+                <a href="{{ url_for('inventory.inventory_list') }}" class="btn btn-outline-secondary btn-sm" title="Reset">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Inventory Table -->
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th>Item Name</th>
+                    <th>Generic / Brand</th>
+                    <th>Category</th>
+                    <th>Batch & Expiry</th>
+                    <th>Stock Qty</th>
+                    <th>Selling Price</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if items %}
+                    {% for itm in items %}
+                    <tr class="{% if itm.is_low_stock %}table-danger-subtle{% endif %}">
+                        <td class="fw-semibold">
+                            {{ itm.item_name }}
+                            {% if itm.unit %}
+                                <span class="badge bg-light text-muted border ms-1">{{ itm.unit }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ itm.generic_name or '—' }}</div>
+                            <small class="text-muted">{{ itm.brand or '' }}</small>
+                        </td>
+                        <td>{{ itm.category.name if itm.category else 'General' }}</td>
+                        <td>
+                            <div>Batch: {{ itm.batch_number or '—' }}</div>
+                            <small class="text-muted">Exp: {{ itm.expiry_date.strftime('%d %b %Y') if itm.expiry_date else '—' }}</small>
+                        </td>
+                        <td>
+                            <strong class="{% if itm.is_low_stock %}text-danger{% else %}text-dark{% endif %} fs-6">
+                                {{ itm.quantity }}
+                            </strong>
+                            {% if itm.is_low_stock %}
+                                <span class="badge bg-danger ms-1">Low (Reorder: {{ itm.reorder_level }})</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ "%.2f"|format(itm.selling_price) }} MMK</td>
+                        <td>
+                            <span class="badge {% if itm.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ 'Active' if itm.is_active else 'Inactive' }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#stockModal{{ itm.id }}">
+                                <i class="bi bi-arrow-left-right"></i> Stock Move
+                            </button>
+                            <a href="{{ url_for('inventory.edit_item', item_id=itm.id) }}" class="btn btn-outline-secondary btn-sm py-0 px-2">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- Stock Transaction Modal for each item -->
+                    <div class="modal fade" id="stockModal{{ itm.id }}" tabindex="-1" aria-labelledby="stockModalLabel{{ itm.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ url_for('inventory.stock_transaction', item_id=itm.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold" id="stockModalLabel{{ itm.id }}">
+                                            Stock Movement &mdash; {{ itm.item_name }}
+                                        </h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body small">
+                                        <div class="alert alert-light border py-2 mb-3">
+                                            Current Available Stock: <strong>{{ itm.quantity }} {{ itm.unit or 'units' }}</strong>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Movement Type <span class="text-danger">*</span></label>
+                                            <select name="transaction_type" class="form-select form-select-sm" required>
+                                                <option value="IN">Stock IN (Receive items)</option>
+                                                <option value="OUT">Stock OUT (Dispense / Disposal)</option>
+                                                <option value="ADJUSTMENT">Stock ADJUSTMENT (Physical Count Override)</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Quantity <span class="text-danger">*</span></label>
+                                            <input type="number" step="any" name="quantity" class="form-control form-control-sm" required placeholder="Enter quantity">
+                                            <small class="text-muted">For Adjustment, enter the new verified total count.</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Reference / Invoice #</label>
+                                            <input type="text" name="reference" class="form-control form-control-sm" placeholder="e.g. PO-1024 or Dispense ref">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Notes</label>
+                                            <textarea name="notes" rows="2" class="form-control form-control-sm" placeholder="Reason or remarks..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary btn-sm">Confirm Movement</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            No inventory items found.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pagination.pages > 1 %}
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+        <small class="text-muted">Showing page {{ pagination.page }} of {{ pagination.pages }}</small>
+        <ul class="pagination pagination-sm mb-0">
+            {% if pagination.has_prev %}
+            <li class="page-item"><a class="page-link" href="{{ url_for('inventory.inventory_list', page=pagination.prev_num) }}">Prev</a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ pagination.page }}</span></li>
+            {% if pagination.has_next %}
+            <li class="page-item"><a class="page-link" href="{{ url_for('inventory.inventory_list', page=pagination.next_num) }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

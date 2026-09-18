@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Patient: {{ patient.full_name }} — Myanmar Clinic EMR{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-pencil-square"></i> Edit Patient Demographics</h5>
+                <small class="text-muted">Editing records for Registration No: <strong>{{ patient.registration_number }}</strong></small>
+            </div>
+            <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Cancel & Back to Detail
+            </a>
+        </div>
+
+        <form method="POST" action="{{ url_for('patients.edit_patient', patient_id=patient.id) }}" class="card border-0 shadow-sm p-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- SECTION 1: PERSONAL INFORMATION -->
+            <div class="form-section-title">
+                <i class="bi bi-person"></i> 1. Personal Information
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="sir_name" class="form-label small fw-semibold">Sir Name <span class="text-danger">*</span></label>
+                    <select name="sir_name" id="sir_name" class="form-select form-select-sm" required>
+                        {% for s in sir_names %}
+                            <option value="{{ s.title }}" data-default-gender="{{ s.default_gender }}"
+                                {% if patient.sir_name == s.title %}selected{% endif %}>
+                                {{ s.title }} ({{ s.default_gender }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="patient_name" class="form-label small fw-semibold">Patient Name <span class="text-danger">*</span></label>
+                    <input type="text" name="patient_name" id="patient_name" class="form-control form-control-sm"
+                           required value="{{ patient.patient_name }}">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="gender" class="form-label small fw-semibold">Gender <span class="text-danger">*</span></label>
+                    <select name="gender" id="gender" class="form-select form-select-sm" required>
+                        <option value="Male" {% if patient.gender == 'Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if patient.gender == 'Female' %}selected{% endif %}>Female</option>
+                    </select>
+                </div>
+
+                <!-- Calendar-aware Dynamic DOB & Age Sync (Requirement 22) -->
+                <div class="col-md-4">
+                    <label for="date_of_birth" class="form-label small fw-semibold">Date of Birth</label>
+                    <input type="date" name="date_of_birth" id="date_of_birth" class="form-control form-control-sm"
+                           value="{{ patient.date_of_birth.strftime('%Y-%m-%d') if patient.date_of_birth else '' }}">
+                </div>
+
+                <div class="col-md-8">
+                    <label class="form-label small fw-semibold">Dynamic Age (Years / Months / Days)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" id="age_years" name="age_years" class="form-control" placeholder="Years" min="0">
+                        <span class="input-group-text">Y</span>
+                        <input type="number" id="age_months" name="age_months" class="form-control" placeholder="Months" min="0" max="11">
+                        <span class="input-group-text">M</span>
+                        <input type="number" id="age_days" name="age_days" class="form-control" placeholder="Days" min="0" max="31">
+                        <span class="input-group-text">D</span>
+                    </div>
+                    <small class="text-muted d-block mt-1">Current dynamic age: <strong id="age_display_text" class="text-primary">{{ patient.age_formatted }}</strong></small>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="marital_status" class="form-label small fw-semibold">Marital Status</label>
+                    <select name="marital_status" id="marital_status" class="form-select form-select-sm">
+                        <option value="">-- Unspecified --</option>
+                        <option value="Single" {% if patient.marital_status == 'Single' %}selected{% endif %}>Single</option>
+                        <option value="Married" {% if patient.marital_status == 'Married' %}selected{% endif %}>Married</option>
+                        <option value="Divorced" {% if patient.marital_status == 'Divorced' %}selected{% endif %}>Divorced</option>
+                        <option value="Widowed" {% if patient.marital_status == 'Widowed' %}selected{% endif %}>Widowed</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="occupation" class="form-label small fw-semibold">Occupation</label>
+                    <input type="text" name="occupation" id="occupation" class="form-control form-control-sm"
+                           value="{{ patient.occupation or '' }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label for="blood_group" class="form-label small fw-semibold">Blood Group</label>
+                    <select name="blood_group" id="blood_group" class="form-select form-select-sm">
+                        <option value="">-- Unknown --</option>
+                        <option value="A+" {% if patient.blood_group == 'A+' %}selected{% endif %}>A+</option>
+                        <option value="A-" {% if patient.blood_group == 'A-' %}selected{% endif %}>A-</option>
+                        <option value="B+" {% if patient.blood_group == 'B+' %}selected{% endif %}>B+</option>
+                        <option value="B-" {% if patient.blood_group == 'B-' %}selected{% endif %}>B-</option>
+                        <option value="AB+" {% if patient.blood_group == 'AB+' %}selected{% endif %}>AB+</option>
+                        <option value="AB-" {% if patient.blood_group == 'AB-' %}selected{% endif %}>AB-</option>
+                        <option value="O+" {% if patient.blood_group == 'O+' %}selected{% endif %}>O+</option>
+                        <option value="O-" {% if patient.blood_group == 'O-' %}selected{% endif %}>O-</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="guardian_name" class="form-label small fw-semibold">Guardian Name</label>
+                    <input type="text" name="guardian_name" id="guardian_name" class="form-control form-control-sm"
+                           value="{{ patient.guardian_name or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="guardian_relationship" class="form-label small fw-semibold">Guardian Relationship</label>
+                    <input type="text" name="guardian_relationship" id="guardian_relationship" class="form-control form-control-sm"
+                           value="{{ patient.guardian_relationship or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="guardian_phone" class="form-label small fw-semibold">Guardian Phone</label>
+                    <input type="text" name="guardian_phone" id="guardian_phone" class="form-control form-control-sm"
+                           value="{{ patient.guardian_phone or '' }}">
+                </div>
+            </div>
+
+            <!-- SECTION 2: CONTACT INFORMATION -->
+            <div class="form-section-title">
+                <i class="bi bi-telephone"></i> 2. Contact Information
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="phone_number" class="form-label small fw-semibold">Phone Number(s) <span class="text-danger">*</span></label>
+                    <input type="text" name="phone_number" id="phone_number" class="form-control form-control-sm"
+                           value="{{ patient.phone_numbers_list|join(', ') }}" required>
+                    <small class="text-muted">Separate multiple numbers with commas.</small>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="email" class="form-label small fw-semibold">Email</label>
+                    <input type="email" name="email" id="email" class="form-control form-control-sm"
+                           value="{{ patient.email or '' }}">
+                </div>
+
+                <div class="col-md-12">
+                    <label for="address" class="form-label small fw-semibold">Address</label>
+                    <input type="text" name="address" id="address" class="form-control form-control-sm"
+                           value="{{ patient.address or '' }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="city_township" class="form-label small fw-semibold">City / Township</label>
+                    <input type="text" name="city_township" id="city_township" class="form-control form-control-sm"
+                           value="{{ patient.city_township or '' }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="state_region" class="form-label small fw-semibold">State / Region</label>
+                    <input type="text" name="state_region" id="state_region" class="form-control form-control-sm"
+                           value="{{ patient.state_region or default_state }}">
+                </div>
+            </div>
+
+            <!-- SECTION 3: IDENTIFICATION -->
+            <div class="form-section-title">
+                <i class="bi bi-card-heading"></i> 3. Identification
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="nrc_number" class="form-label small fw-semibold">NRC Number</label>
+                    <input type="text" name="nrc_number" id="nrc_number" class="form-control form-control-sm"
+                           value="{{ patient.nrc_number or '' }}">
+                </div>
+            </div>
+
+            <!-- SECTION 4: PATIENT SUMMARY & NOTES -->
+            <div class="form-section-title">
+                <i class="bi bi-journal-text"></i> 4. Patient Summary & Notes
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="patient_summary" class="form-label small fw-semibold">Patient Summary</label>
+                    <textarea name="patient_summary" id="patient_summary" rows="3" class="form-control form-control-sm">{{ patient.patient_summary or '' }}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label for="notes" class="form-label small fw-semibold">Administrative Notes</label>
+                    <textarea name="notes" id="notes" rows="3" class="form-control form-control-sm">{{ patient.notes or '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-secondary btn-sm px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-sm px-4 shadow-sm">
+                    <i class="bi bi-check-circle"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
