@@ -1,64 +1,136 @@
 {% extends "base.html" %}
 
-{% block title %}Encounter for {{ patient.full_name }} — Myanmar Clinic EMR{% endblock %}
+{% block title %}Encounter #{{ encounter.id }} &mdash; {{ patient.full_name }} &mdash; Myanmar Clinic EMR{% endblock %}
 
 {% block content %}
 <form method="POST" action="{{ url_for('encounters.encounter_detail', encounter_id=encounter.id) }}" id="encounter-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <!-- Header: Patient Demographics & Encounter Metadata -->
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <h5 class="mb-0 fw-bold text-dark">
-                    <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="text-decoration-none text-dark">
-                        {{ patient.full_name }}
-                    </a>
-                    <span class="badge bg-secondary ms-2 fw-normal" style="font-size: 0.85rem;">{{ patient.registration_number }}</span>
-                    <span class="badge {% if patient.gender == 'Male' %}bg-info text-dark{% else %}bg-danger-subtle text-danger{% endif %} ms-1">
-                        {{ patient.gender }}
-                    </span>
-                    <span class="badge {% if encounter.status == 'completed' %}bg-success{% elif encounter.status == 'draft' %}bg-warning text-dark{% else %}bg-secondary{% endif %} ms-1">
-                        {{ encounter.status|upper }}
-                    </span>
-                </h5>
-                <div class="text-muted small mt-1">
-                    <span><i class="bi bi-calendar-event"></i> <strong>Age:</strong> {{ patient.age_formatted }}</span> &bull;
-                    <span><i class="bi bi-telephone"></i> <strong>Phone:</strong> {{ patient.primary_phone or 'N/A' }}</span> &bull;
-                    <span><i class="bi bi-clock-history"></i> <strong>Encounter Date:</strong> {{ encounter.encounter_date.strftime('%d %b %Y, %I:%M %p') }}</span>
+    <!-- Breadcrumb & Top Context Ribbon (Stitch Design) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div class="d-flex align-items-center gap-1 small text-muted flex-wrap">
+            <a href="{{ url_for('patients.patients_list') }}" class="text-decoration-none text-muted">
+                <i class="bi bi-people"></i> Patients
+            </a>
+            <span class="text-muted">/</span>
+            <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="text-decoration-none fw-semibold text-dark">
+                {{ patient.full_name }} ({{ patient.registration_number }})
+            </a>
+            <span class="text-muted">/</span>
+            <span class="badge rounded-pill fw-bold" style="background-color: var(--clinic-mint-light); color: var(--clinic-primary);">
+                <i class="bi bi-journal-check"></i> Encounter #{{ encounter.id }} ({{ encounter.encounter_date.strftime('%d %b %Y') }})
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted text-uppercase fw-semibold" style="font-size: 0.72rem;">Status:</span>
+            {% if encounter.status == 'completed' %}
+                <span class="badge badge-completed"><i class="bi bi-check-circle-fill"></i> Completed</span>
+            {% elif encounter.status == 'draft' %}
+                <span class="badge badge-draft"><i class="bi bi-pencil-fill"></i> In Progress (Draft)</span>
+            {% else %}
+                <span class="badge badge-neutral">{{ encounter.status|upper }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Encounter Master Header Card (Stitch Design) -->
+    <div class="patient-master-banner mb-3">
+        <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+            <!-- Patient Identity & Demographics -->
+            <div class="d-flex align-items-start gap-3">
+                <div class="position-relative">
+                    <div class="patient-avatar-box">
+                        {{ patient.full_name[:2]|upper }}
+                    </div>
+                    <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1" title="Active Record"></span>
+                </div>
+                <div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <h4 class="fw-bold mb-0 text-dark">
+                            <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="text-decoration-none text-dark">
+                                {{ patient.full_name }}
+                            </a>
+                        </h4>
+                        <span class="badge badge-neutral font-monospace">{{ patient.registration_number }}</span>
+                        <span class="badge {% if patient.gender == 'Male' %}badge-info{% else %}badge-danger{% endif %}">
+                            {{ patient.gender }}
+                        </span>
+                        {% if encounter.status == 'completed' %}
+                            <span class="badge badge-completed"><i class="bi bi-patch-check-fill"></i> COMPLETED</span>
+                        {% else %}
+                            <span class="badge badge-draft"><i class="bi bi-clock-history"></i> IN PROGRESS</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-3 text-muted small">
+                        <span><i class="bi bi-calendar3"></i> {{ patient.age_formatted }}</span>
+                        <span><i class="bi bi-telephone"></i> {{ patient.primary_phone or 'No phone' }}</span>
+                        <span><i class="bi bi-clock"></i> {{ encounter.encounter_date.strftime('%d %b %Y, %I:%M %p') }}</span>
+                        {% if encounter.doctor %}
+                            <span class="fw-semibold text-primary"><i class="bi bi-stethoscope"></i> Dr. {{ encounter.doctor.name }} ({{ encounter.doctor.specialty or 'General' }})</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
-            <!-- Doctor Assignment (Requirement 75) -->
-            <div class="d-flex align-items-center gap-2">
-                <label for="doctor_id" class="small fw-semibold text-muted mb-0">Attending Doctor:</label>
-                {% if current_user.is_doctor() %}
-                    <span class="badge bg-primary-subtle text-primary border border-primary py-2 px-3 fw-bold" style="font-size: 0.85rem;">
-                        <i class="bi bi-person-check-fill"></i> {{ current_user.doctor_profile.display_name if current_user.doctor_profile else current_user.username }}
-                    </span>
-                    <input type="hidden" name="doctor_id" value="{{ current_user.doctor_profile.id if current_user.doctor_profile else '' }}">
-                {% else %}
-                    <select name="doctor_id" id="doctor_id" class="form-select form-select-sm" style="width: 220px;">
-                        <option value="">-- Unassigned Doctor --</option>
-                        {% for doc in doctors %}
-                            <option value="{{ doc.id }}" {% if encounter.doctor_id == doc.id %}selected{% endif %}>
-                                {{ doc.display_name }} ({{ doc.specialty or 'General' }})
-                            </option>
-                        {% endfor %}
-                    </select>
-                {% endif %}
+            <!-- Doctor Assignment & Primary Action Controls -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 bg-light px-3 py-1 rounded-3">
+                    <label for="doctor_id" class="small fw-semibold text-muted mb-0 whitespace-nowrap">Doctor:</label>
+                    {% if current_user.is_doctor() %}
+                        <span class="badge badge-completed fw-semibold">
+                            <i class="bi bi-person-check-fill"></i> {{ current_user.doctor_profile.display_name if current_user.doctor_profile else current_user.username }}
+                        </span>
+                        <input type="hidden" name="doctor_id" value="{{ current_user.doctor_profile.id if current_user.doctor_profile else '' }}">
+                    {% else %}
+                        <select name="doctor_id" id="doctor_id" class="form-select form-select-sm" style="min-width: 200px;">
+                            <option value="">-- Unassigned Doctor --</option>
+                            {% for doc in doctors %}
+                                <option value="{{ doc.id }}" {% if encounter.doctor_id == doc.id %}selected{% endif %}>
+                                    {{ doc.display_name }} ({{ doc.specialty or 'General' }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </div>
 
-                <button type="submit" name="action" value="save" class="btn btn-primary btn-sm px-3 shadow-sm">
-                    <i class="bi bi-check2-circle"></i> Save Encounter
-                </button>
-                <button type="submit" name="action" value="cancel" class="btn btn-outline-secondary btn-sm px-3" formnovalidate onclick="return confirm('Cancel and discard uncommitted encounter data?');">
-                    Cancel
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-person-lines-fill"></i> Profile
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Print
+                    </button>
+                    <button type="submit" name="action" value="save" class="btn btn-primary btn-sm shadow-sm">
+                        <i class="bi bi-check2-circle"></i> Save Encounter
+                    </button>
+                    <button type="submit" name="action" value="cancel" class="btn btn-outline-danger btn-sm" formnovalidate onclick="return confirm('Discard uncommitted changes?');">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rapid Status Flag Bar -->
+        <div class="mt-3 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center gap-3 small text-muted">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <span><i class="bi bi-hospital text-primary"></i> Type: <strong class="text-dark">Outpatient Consultation (OPD)</strong></span>
+                <span><i class="bi bi-geo-alt text-primary"></i> Location: <strong class="text-dark">Central Consultation Suite</strong></span>
+                <span><i class="bi bi-shield-check text-primary"></i> Records: <strong class="text-dark">EMR Active</strong></span>
+            </div>
+            <div>
+                {% set vouchers = encounter.vouchers.all() %}
+                {% if vouchers %}
+                    <span class="badge badge-completed">
+                        <i class="bi bi-receipt"></i> Voucher #{{ vouchers[0].voucher_number }} ({{ "%.0f"|format(vouchers[0].total) }} MMK)
+                    </span>
+                {% else %}
+                    <span class="badge badge-neutral"><i class="bi bi-receipt"></i> No Voucher</span>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Unified Desktop 2-Column Layout (Requirement 34 & 82) -->
+    <!-- Unified Desktop 2-Column Layout (Dominant 65% : Supporting 35%) -->
     <div class="encounter-desktop-layout">
 
         <!-- ============================================================ -->
@@ -66,46 +138,52 @@
         <!-- ============================================================ -->
         <div class="clinical-dominant-area">
 
-            <!-- 1. HOPI (History of Present Illness) - Dominant (Requirement 35) -->
-            <div class="clinical-card">
-                <div class="clinical-card-header text-primary">
-                    <span><i class="bi bi-chat-left-text"></i> 1. History of Present Illness (HOPI)</span>
-                    <small class="text-muted fw-normal">Encounter-specific. Never copied from past encounters.</small>
+            <!-- 1. HOPI (History of Present Illness) -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-chat-left-quote text-primary"></i> 1. History of Present Illness (HOPI)
+                    </span>
+                    <span class="badge badge-neutral">Encounter Snapshot</span>
                 </div>
-                <div class="clinical-card-body">
-                    <textarea name="hopi" id="hopi" rows="5" class="form-control"
+                <div class="card-body p-3">
+                    <textarea name="hopi" id="hopi" rows="4" class="form-control"
                               placeholder="Chief complaint, onset, duration, progression, aggravating/relieving factors, symptoms...">{{ encounter.hopi or '' }}</textarea>
                 </div>
             </div>
 
-            <!-- 2. EXAMINATION - Dominant (Requirement 36) -->
-            <div class="clinical-card">
-                <div class="clinical-card-header text-primary">
-                    <span><i class="bi bi-heart-pulse"></i> 2. Clinical Examination</span>
-                    <small class="text-muted fw-normal">General appearance, systemic examination findings (CVS, RS, PA, CNS, etc.)</small>
+            <!-- 2. EXAMINATION -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-heart-pulse text-primary"></i> 2. Clinical Examination
+                    </span>
+                    <span class="badge badge-neutral">Objective Findings</span>
                 </div>
-                <div class="clinical-card-body">
-                    <textarea name="examination" id="examination" rows="6" class="form-control"
-                              placeholder="General examination, physical findings, systemic examination...">{{ encounter.examination or '' }}</textarea>
+                <div class="card-body p-3">
+                    <textarea name="examination" id="examination" rows="5" class="form-control"
+                              placeholder="General appearance, physical examination findings (CVS, RS, PA, CNS, etc.)...">{{ encounter.examination or '' }}</textarea>
                 </div>
             </div>
 
-            <!-- 3. DIAGNOSIS - Dominant (Requirement 37) -->
-            <div class="clinical-card">
-                <div class="clinical-card-header d-flex justify-content-between align-items-center text-primary">
-                    <span><i class="bi bi-diagram-3"></i> 3. Diagnoses</span>
-                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" id="btn-add-diagnosis">
+            <!-- 3. DIAGNOSES -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-diagram-3 text-primary"></i> 3. Diagnoses
+                    </span>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-diagnosis">
                         <i class="bi bi-plus-lg"></i> Add Diagnosis
                     </button>
                 </div>
-                <div class="clinical-card-body">
+                <div class="card-body p-3">
                     <div id="diagnoses-container">
                         {% if encounter.diagnoses %}
                             {% for diag in encounter.diagnoses %}
                             <div class="diagnosis-row d-flex gap-2 mb-2 align-items-center">
-                                <input type="text" name="diagnosis_text[]" class="form-control form-control-sm"
+                                <input type="text" name="diagnosis_text[]" class="form-control"
                                        value="{{ diag.diagnosis_text }}" placeholder="Diagnosis (e.g. Acute Bronchitis)" required>
-                                <select name="diagnosis_category[]" class="form-select form-select-sm" style="width: 140px;">
+                                <select name="diagnosis_category[]" class="form-select" style="width: 140px;">
                                     <option value="Primary" {% if diag.category == 'Primary' %}selected{% endif %}>Primary</option>
                                     <option value="Secondary" {% if diag.category == 'Secondary' %}selected{% endif %}>Secondary</option>
                                     <option value="Provisional" {% if diag.category == 'Provisional' %}selected{% endif %}>Provisional</option>
@@ -116,8 +194,8 @@
                             {% endfor %}
                         {% else %}
                             <div class="diagnosis-row d-flex gap-2 mb-2 align-items-center">
-                                <input type="text" name="diagnosis_text[]" class="form-control form-control-sm" placeholder="Diagnosis (e.g. Acute Bronchitis)">
-                                <select name="diagnosis_category[]" class="form-select form-select-sm" style="width: 140px;">
+                                <input type="text" name="diagnosis_text[]" class="form-control" placeholder="Diagnosis (e.g. Acute Bronchitis)">
+                                <select name="diagnosis_category[]" class="form-select" style="width: 140px;">
                                     <option value="Primary" selected>Primary</option>
                                     <option value="Secondary">Secondary</option>
                                     <option value="Provisional">Provisional</option>
@@ -130,37 +208,39 @@
                 </div>
             </div>
 
-            <!-- 4. PAST HISTORY (BOTTOM OF LEFT AREA, VISUALLY SECONDARY) (Requirements 38, 39, 40) -->
-            <div class="clinical-card border-secondary-subtle">
-                <div class="clinical-card-header bg-light text-secondary">
-                    <span><i class="bi bi-clock-history"></i> 4. Past History (Independent Snapshot)</span>
-                    <small class="text-muted fw-normal">Copied from previous encounter; independent snapshot for this encounter.</small>
+            <!-- 4. PAST HISTORY (INDEPENDENT SNAPSHOT) -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-muted d-flex align-items-center gap-2">
+                        <i class="bi bi-clock-history"></i> 4. Past History (Independent Snapshot)
+                    </span>
+                    <span class="badge badge-neutral">Auto-populated Snapshot</span>
                 </div>
-                <div class="clinical-card-body">
+                <div class="card-body p-3">
                     <div class="row g-2">
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Past Medical History (PMH):</label>
-                            <textarea name="pmh" rows="2" class="form-control form-control-sm" placeholder="Hypertension, Diabetes, Asthma...">{{ encounter.history.pmh if encounter.history else '' }}</textarea>
+                            <textarea name="pmh" rows="2" class="form-control" placeholder="Hypertension, Diabetes, Asthma...">{{ encounter.history.pmh if encounter.history else '' }}</textarea>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Past Surgical History (PSH):</label>
-                            <textarea name="psh" rows="2" class="form-control form-control-sm" placeholder="Appendectomy, Cholecystectomy...">{{ encounter.history.psh if encounter.history else '' }}</textarea>
+                            <textarea name="psh" rows="2" class="form-control" placeholder="Appendectomy, Cholecystectomy...">{{ encounter.history.psh if encounter.history else '' }}</textarea>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Drug History (Current Medications):</label>
-                            <textarea name="drug_history" rows="2" class="form-control form-control-sm" placeholder="Amlodipine 5mg daily...">{{ encounter.history.drug_history if encounter.history else '' }}</textarea>
+                            <textarea name="drug_history" rows="2" class="form-control" placeholder="Amlodipine 5mg daily...">{{ encounter.history.drug_history if encounter.history else '' }}</textarea>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Allergy History:</label>
-                            <textarea name="allergy_history" rows="2" class="form-control form-control-sm" placeholder="Penicillin, NSAIDs, seafood...">{{ encounter.history.allergy_history if encounter.history else '' }}</textarea>
+                            <textarea name="allergy_history" rows="2" class="form-control" placeholder="Penicillin, NSAIDs, seafood...">{{ encounter.history.allergy_history if encounter.history else '' }}</textarea>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Family History:</label>
-                            <textarea name="family_history" rows="2" class="form-control form-control-sm" placeholder="Family history of CAD, DM, cancer...">{{ encounter.history.family_history if encounter.history else '' }}</textarea>
+                            <textarea name="family_history" rows="2" class="form-control" placeholder="Family history of CAD, DM, cancer...">{{ encounter.history.family_history if encounter.history else '' }}</textarea>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Social History:</label>
-                            <textarea name="social_history" rows="2" class="form-control form-control-sm" placeholder="Smoking, Alcohol, Betel quid, Diet...">{{ encounter.history.social_history if encounter.history else '' }}</textarea>
+                            <textarea name="social_history" rows="2" class="form-control" placeholder="Smoking, Alcohol, Betel quid, Diet...">{{ encounter.history.social_history if encounter.history else '' }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -173,16 +253,19 @@
         <!-- ============================================================ -->
         <div class="supporting-sidebar-area">
 
-            <!-- VITALS (Requirement 41) -->
-            <div class="clinical-card">
-                <div class="clinical-card-header text-dark">
-                    <span><i class="bi bi-activity"></i> Vitals</span>
+            <!-- VITALS -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-activity text-primary"></i> Vitals
+                    </span>
+                    <span class="badge badge-neutral">Triage</span>
                 </div>
-                <div class="clinical-card-body p-2">
+                <div class="card-body p-3">
                     {% set v = encounter.latest_vitals %}
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label small fw-semibold mb-0">BP (Systolic / Diastolic)</label>
+                            <label class="form-label small fw-semibold mb-1">Blood Pressure</label>
                             <div class="input-group input-group-sm">
                                 <input type="number" name="bp_systolic" class="form-control" placeholder="Sys" value="{{ v.bp_systolic if v else '' }}">
                                 <span class="input-group-text">/</span>
@@ -190,43 +273,45 @@
                             </div>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-semibold mb-0">Pulse (bpm)</label>
+                            <label class="form-label small fw-semibold mb-1">Pulse (bpm)</label>
                             <input type="number" name="pulse" class="form-control form-control-sm" placeholder="Pulse" value="{{ v.pulse if v else '' }}">
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-semibold mb-0">Temp (&deg;F)</label>
+                            <label class="form-label small fw-semibold mb-1">Temp (&deg;F)</label>
                             <input type="number" step="0.1" name="temperature" class="form-control form-control-sm" placeholder="98.6" value="{{ v.temperature if v else '' }}">
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-semibold mb-0">SpO2 (%)</label>
+                            <label class="form-label small fw-semibold mb-1">SpO2 (%)</label>
                             <input type="number" name="spo2" class="form-control form-control-sm" placeholder="98" value="{{ v.spo2 if v else '' }}">
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-semibold mb-0">Resp. Rate (/min)</label>
+                            <label class="form-label small fw-semibold mb-1">Resp. Rate (/min)</label>
                             <input type="number" name="respiratory_rate" class="form-control form-control-sm" placeholder="18" value="{{ v.respiratory_rate if v else '' }}">
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-semibold mb-0">Weight (kg)</label>
+                            <label class="form-label small fw-semibold mb-1">Weight (kg)</label>
                             <input type="number" step="0.1" name="weight" class="form-control form-control-sm" placeholder="60.5" value="{{ v.weight if v else '' }}">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- PRESCRIPTION (Prescribed during THIS encounter) (Requirement 42) -->
-            <div class="clinical-card">
-                <div class="clinical-card-header d-flex justify-content-between align-items-center text-dark">
-                    <span><i class="bi bi-capsule"></i> Prescription (This Visit)</span>
-                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" id="btn-add-medicine">
-                        <i class="bi bi-plus-lg"></i> Add Medicine
+            <!-- PRESCRIPTION -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-capsule text-primary"></i> Prescription
+                    </span>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-medicine">
+                        <i class="bi bi-plus-lg"></i> Add
                     </button>
                 </div>
-                <div class="clinical-card-body p-2">
-                    <small class="text-muted d-block mb-2">Prescribed for this encounter only. Not auto-deducted from inventory.</small>
+                <div class="card-body p-3">
+                    <small class="text-muted d-block mb-2">Prescribed for this encounter only.</small>
                     <div id="medicines-container">
                         {% if encounter.prescriptions and encounter.prescriptions[0].items %}
                             {% for item in encounter.prescriptions[0].items %}
-                            <div class="medicine-row border rounded p-2 mb-2 bg-light">
+                            <div class="medicine-row border rounded-3 p-2 mb-2 bg-light">
                                 <div class="row g-2 mb-1">
                                     <div class="col-md-5">
                                         <input type="text" name="medicine_name[]" class="form-control form-control-sm"
@@ -267,15 +352,17 @@
                 </div>
             </div>
 
-            <!-- INVESTIGATIONS (Requirement 43) -->
-            <div class="clinical-card">
-                <div class="clinical-card-header d-flex justify-content-between align-items-center text-dark">
-                    <span><i class="bi bi-clipboard-check"></i> Investigations</span>
-                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" id="btn-add-investigation">
-                        <i class="bi bi-plus-lg"></i> Add Investigation
+            <!-- INVESTIGATIONS -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-clipboard2-pulse text-primary"></i> Investigations
+                    </span>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-investigation">
+                        <i class="bi bi-plus-lg"></i> Add
                     </button>
                 </div>
-                <div class="clinical-card-body p-2">
+                <div class="card-body p-3">
                     <div id="investigations-container">
                         {% if encounter.investigations_rel %}
                             {% for inv in encounter.investigations_rel %}
@@ -297,15 +384,17 @@
                 </div>
             </div>
 
-            <!-- PROCEDURES (Requirement 44) -->
-            <div class="clinical-card">
-                <div class="clinical-card-header d-flex justify-content-between align-items-center text-dark">
-                    <span><i class="bi bi-scissors"></i> Procedures</span>
-                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" id="btn-add-procedure">
-                        <i class="bi bi-plus-lg"></i> Add Procedure
+            <!-- PROCEDURES -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-bandaid text-primary"></i> Procedures
+                    </span>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-procedure">
+                        <i class="bi bi-plus-lg"></i> Add
                     </button>
                 </div>
-                <div class="clinical-card-body p-2">
+                <div class="card-body p-3">
                     <div id="procedures-container">
                         {% if encounter.procedures %}
                             {% for proc in encounter.procedures %}
@@ -327,36 +416,38 @@
                 </div>
             </div>
 
-            <!-- BILLING / VOUCHER (Requirement 45 & 77) -->
-            <div class="clinical-card">
-                <div class="clinical-card-header d-flex justify-content-between align-items-center text-dark">
-                    <span><i class="bi bi-receipt"></i> Billing / Voucher</span>
+            <!-- BILLING / VOUCHER -->
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-receipt text-primary"></i> Billing & Voucher
+                    </span>
                     {% if encounter.status != 'draft' %}
-                    <a href="{{ url_for('billing.new_voucher', encounter_id=encounter.id) }}" class="btn btn-outline-primary btn-sm py-0 px-2">
-                        <i class="bi bi-plus-lg"></i> Add Voucher
+                    <a href="{{ url_for('billing.new_voucher', encounter_id=encounter.id) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg"></i> Add
                     </a>
                     {% endif %}
                 </div>
-                <div class="clinical-card-body p-2">
+                <div class="card-body p-3">
                     {% set vouchers = encounter.vouchers.all() %}
                     {% if vouchers %}
                         <ul class="list-group list-group-flush small">
                             {% for v in vouchers %}
                             <li class="list-group-item d-flex justify-content-between align-items-center px-1 py-2">
                                 <div>
-                                    <a href="{{ url_for('billing.voucher_detail', voucher_id=v.id) }}" class="fw-bold text-decoration-none">
+                                    <a href="{{ url_for('billing.voucher_detail', voucher_id=v.id) }}" class="fw-bold text-decoration-none" style="color: var(--clinic-primary-container);">
                                         {{ v.voucher_number }}
                                     </a>
                                     <span class="badge badge-{{ v.status }} ms-1">{{ v.status|replace('_', ' ') }}</span>
                                 </div>
-                                <span class="fw-bold">{{ "%.2f"|format(v.total) }} MMK</span>
+                                <span class="fw-bold text-dark">{{ "%.0f"|format(v.total) }} MMK</span>
                             </li>
                             {% endfor %}
                         </ul>
                     {% else %}
-                        <small class="text-muted d-block text-center py-2">
-                            No voucher created for this encounter yet.
-                        </small>
+                        <div class="text-muted small text-center py-2">
+                            No billing voucher issued yet.
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -366,19 +457,18 @@
     </div>
 
     <!-- Bottom Actions Bar -->
-    <div class="card border-0 shadow-sm mt-3 p-3 bg-white d-flex flex-row justify-content-between align-items-center">
-        <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm px-3">
-            <i class="bi bi-arrow-left"></i> Return to Patient
+    <div class="patient-master-banner mt-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+        <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Return to Patient Profile
         </a>
-        <div class="d-flex gap-2">
-            <button type="submit" name="action" value="cancel" class="btn btn-outline-danger btn-sm px-4" formnovalidate onclick="return confirm('Discard any uncommitted changes?');">
-                Discard / Cancel
+        <div class="d-flex align-items-center gap-2">
+            <button type="submit" name="action" value="cancel" class="btn btn-outline-danger" formnovalidate onclick="return confirm('Discard any uncommitted changes?');">
+                <i class="bi bi-x-circle"></i> Cancel
             </button>
-            <button type="submit" name="action" value="save" class="btn btn-primary btn-sm px-4 shadow-sm fw-semibold">
-                <i class="bi bi-check-circle"></i> Save Clinical Encounter
+            <button type="submit" name="action" value="save" class="btn btn-primary shadow-sm">
+                <i class="bi bi-check2-circle"></i> Save Clinical Encounter
             </button>
         </div>
     </div>
 </form>
 {% endblock %}
-

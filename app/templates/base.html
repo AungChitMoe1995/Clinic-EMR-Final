@@ -16,10 +16,11 @@
 </head>
 <body>
     {% if current_user %}
-    <!-- Thin persistent top navigation bar (Requirement 5) -->
+    <!-- Thin persistent top navigation bar -->
     <nav class="clinic-navbar">
         <a href="{{ url_for('patients.patients_list') }}" class="clinic-brand">
-            <i class="bi bi-hospital"></i> MYANMAR EMR
+            <span class="clinic-brand-icon"><i class="bi bi-hospital"></i></span>
+            <span>MYANMAR EMR</span>
         </a>
 
         <ul class="clinic-nav-tabs">
@@ -58,18 +59,19 @@
         </ul>
 
         <div class="clinic-nav-right">
-            <span class="badge bg-secondary text-light fw-normal py-1 px-2" style="font-size: 0.78rem;">
-                <i class="bi bi-person"></i> {{ current_user.username }} ({{ current_user.role }})
-            </span>
+            <div class="user-profile-pill">
+                <span class="user-avatar-circle"><i class="bi bi-person-fill"></i></span>
+                <span>{{ current_user.username }}</span>
+                <span class="user-role-badge">({{ current_user.role }})</span>
+            </div>
 
             {% if current_user.is_administrator() %}
-            <!-- Settings gear icon at the far right -->
             <a href="{{ url_for('settings.index') }}" class="settings-gear-btn {% if active_tab == 'settings' %}active{% endif %}" title="Global Settings">
                 <i class="bi bi-gear-fill"></i>
             </a>
             {% endif %}
 
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light btn-sm py-0 px-2" style="font-size: 0.8rem;" title="Logout">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout">
                 <i class="bi bi-box-arrow-right"></i>
             </a>
         </div>

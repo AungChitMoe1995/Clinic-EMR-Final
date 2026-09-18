@@ -1,30 +1,112 @@
-/* Myanmar Clinic EMR - Custom Stylesheet */
+/* ==========================================================
+   MYANMAR CLINIC EMR - CLINICAL EMERALD DESIGN SYSTEM
+   Modern Minimalist with Precision Elevation
+   ========================================================== */
 
 :root {
-    --clinic-primary: #155e75;      /* Deep Teal */
-    --clinic-primary-hover: #0e7490;
-    --clinic-secondary: #0f766e;
-    --clinic-bg: #f8fafc;
-    --clinic-card-bg: #ffffff;
-    --clinic-text: #1e293b;
-    --clinic-muted: #64748b;
-    --clinic-border: #e2e8f0;
-    --navbar-height: 48px;
+    /* Brand & Clinical Emerald Palette */
+    --clinic-primary: #005d42;           /* Deep Clinical Emerald (Header/Brand) */
+    --clinic-primary-hover: #004b35;
+    --clinic-primary-container: #047857; /* Active elements & Primary Buttons */
+    --clinic-primary-container-hover: #036348;
+    --clinic-secondary: #006c49;
+    --clinic-mint: #10b981;              /* Interactive mint accents & focus */
+    --clinic-mint-light: #ecfdf5;
+    --clinic-teal: #0d9488;
+
+    /* Surfaces & Backgrounds */
+    --clinic-bg: #f8f9ff;                /* Canvas base */
+    --clinic-surface: #ffffff;           /* Cards & Workspaces */
+    --clinic-surface-low: #eff4ff;       /* Table headers, sub-panels */
+    --clinic-surface-container: #e5eeff;
+    --clinic-surface-high: #dce9ff;
+    --clinic-surface-muted: #f1f5f9;
+
+    /* Typography & Contrast */
+    --clinic-text: #0b1c30;              /* Headings & High Contrast Body */
+    --clinic-text-muted: #475569;        /* Secondary Body & Labels */
+    --clinic-text-dim: #64748b;
+
+    /* Structural Borders */
+    --clinic-border: #e2e8f0;            /* 1px Hairline structural divider */
+    --clinic-border-mint: #d1fae5;
+    --clinic-outline: #cbd5e1;
+
+    /* Semantic Triage & Status Colors */
+    --clinic-success: #059669;
+    --clinic-success-bg: #ecfdf5;
+    --clinic-success-border: #a7f3d0;
+    --clinic-success-text: #065f46;
+
+    --clinic-warning: #d97706;
+    --clinic-warning-bg: #fffbeb;
+    --clinic-warning-border: #fde68a;
+    --clinic-warning-text: #92400e;
+
+    --clinic-danger: #dc2626;
+    --clinic-danger-bg: #fef2f2;
+    --clinic-danger-border: #fecaca;
+    --clinic-danger-text: #991b1b;
+
+    --clinic-info: #0284c7;
+    --clinic-info-bg: #f0f9ff;
+    --clinic-info-border: #bae6fd;
+    --clinic-info-text: #075985;
+
+    /* Elevation & Ambient Shadows */
+    --clinic-shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(4, 120, 87, 0.03);
+    --clinic-shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(4, 120, 87, 0.08);
+    --clinic-shadow-lg: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(4, 120, 87, 0.05);
+
+    /* Radii */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-pill: 9999px;
+
+    --navbar-height: 60px;
 }
+
+/* ==========================================================
+   BASE & TYPOGRAPHY
+   ========================================================== */
 
 body {
     background-color: var(--clinic-bg);
     color: var(--clinic-text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.88rem;
+    line-height: 1.5;
     padding-top: var(--navbar-height);
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Thin persistent top navbar (locked: NO left sidebar, compact, persistent) */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--clinic-text);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+a {
+    color: var(--clinic-primary-container);
+    text-decoration: none;
+    transition: color 0.15s ease-in-out;
+}
+
+a:hover {
+    color: var(--clinic-primary);
+}
+
+/* ==========================================================
+   NAVIGATION BAR (CLINICAL EMERALD)
+   ========================================================== */
+
 .clinic-navbar {
     height: var(--navbar-height);
-    background-color: #0f172a;
-    border-bottom: 2px solid var(--clinic-primary);
+    background-color: var(--clinic-primary);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
     position: fixed;
     top: 0;
     left: 0;
@@ -32,25 +114,41 @@ body {
     z-index: 1050;
     display: flex;
     align-items: center;
-    padding: 0 1rem;
+    padding: 0 1.25rem;
 }
 
 .clinic-brand {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     font-weight: 700;
-    color: #f1f5f9;
+    color: #ffffff;
     text-decoration: none;
     margin-right: 1.5rem;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
     letter-spacing: 0.5px;
+}
+
+.clinic-brand:hover {
+    color: #ffffff;
+}
+
+.clinic-brand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-size: 1.1rem;
 }
 
 .clinic-nav-tabs {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.35rem;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -59,25 +157,26 @@ body {
 .clinic-nav-link {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.85rem;
-    font-size: 0.88rem;
+    gap: 0.45rem;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.86rem;
     font-weight: 500;
-    color: #94a3b8;
+    color: rgba(255, 255, 255, 0.82);
     text-decoration: none;
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     transition: all 0.15s ease-in-out;
 }
 
 .clinic-nav-link:hover {
     color: #ffffff;
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: var(--clinic-primary-container);
 }
 
 .clinic-nav-link.active {
     color: #ffffff;
-    background-color: var(--clinic-primary);
+    background-color: var(--clinic-primary-container);
     font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .clinic-nav-right {
@@ -87,185 +186,406 @@ body {
     gap: 0.75rem;
 }
 
-.settings-gear-btn {
-    color: #94a3b8;
-    font-size: 1.15rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    transition: color 0.15s;
-    text-decoration: none;
-}
-
-.settings-gear-btn:hover,
-.settings-gear-btn.active {
-    color: #38bdf8;
-    background-color: rgba(255, 255, 255, 0.08);
-}
-
-/* Patient Module View Toggle: [ Patients ] [ Encounters ] [ Appointments ] */
-.patient-view-toggle {
+.user-profile-pill {
     display: inline-flex;
-    background-color: #e2e8f0;
-    padding: 3px;
-    border-radius: 6px;
-    gap: 2px;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(4, 120, 87, 0.85);
+    padding: 0.25rem 0.75rem 0.25rem 0.35rem;
+    border-radius: var(--radius-pill);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 600;
 }
 
-.patient-view-toggle .btn {
-    border: none;
-    font-size: 0.85rem;
-    padding: 0.35rem 1.1rem;
+.user-avatar-circle {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+}
+
+.user-role-badge {
+    font-size: 0.7rem;
     font-weight: 500;
-    color: #475569;
-    background-color: transparent;
-    border-radius: 4px;
+    color: #9ffdd3;
+    letter-spacing: 0.02em;
+}
+
+.settings-gear-btn, .logout-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
+    color: rgba(255, 255, 255, 0.82);
+    transition: all 0.15s;
+    text-decoration: none;
+    font-size: 1rem;
+}
+
+.settings-gear-btn:hover, .settings-gear-btn.active,
+.logout-btn:hover {
+    color: #ffffff;
+    background-color: var(--clinic-primary-container);
+}
+
+/* ==========================================================
+   CARDS & CONTAINERS (PRECISION ELEVATION)
+   ========================================================== */
+
+.card, .clinic-card {
+    background-color: var(--clinic-surface);
+    border: 1px solid var(--clinic-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--clinic-shadow-sm);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    margin-bottom: 1.25rem;
+}
+
+.card:hover, .clinic-card:hover {
+    box-shadow: var(--clinic-shadow-md);
+}
+
+.card-header, .clinic-card-header {
+    background-color: var(--clinic-surface);
+    border-bottom: 1px solid var(--clinic-border);
+    padding: 0.85rem 1.25rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--clinic-text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top-left-radius: var(--radius-lg) !important;
+    border-top-right-radius: var(--radius-lg) !important;
+}
+
+.card-body, .clinic-card-body {
+    padding: 1.25rem;
+}
+
+/* Big Clinical Header Card (e.g. Encounter workspace banner) */
+.patient-master-banner {
+    background-color: var(--clinic-surface);
+    border: 1px solid var(--clinic-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--clinic-shadow-sm);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.patient-avatar-box {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-md);
+    background-color: var(--clinic-surface-low);
+    color: var(--clinic-primary-container);
+    font-weight: 700;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Metric / KPI Stat Tiles */
+.stat-tile {
+    background-color: var(--clinic-surface);
+    border: 1px solid var(--clinic-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--clinic-shadow-sm);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-tile:hover {
+    box-shadow: var(--clinic-shadow-md);
+    transform: translateY(-1px);
+}
+
+.stat-tile-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background-color: var(--clinic-surface-low);
+    color: var(--clinic-primary-container);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.stat-tile-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--clinic-text);
+    line-height: 1.2;
+}
+
+.stat-tile-label {
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--clinic-text-dim);
+}
+
+/* ==========================================================
+   BUTTONS (EMERALD STYLE)
+   ========================================================== */
+
+.btn {
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.45rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-sm {
+    padding: 0.28rem 0.65rem;
+    font-size: 0.78rem;
+    border-radius: var(--radius-sm);
+}
+
+.btn-primary {
+    background-color: var(--clinic-primary-container);
+    border-color: var(--clinic-primary-container);
+    color: #ffffff;
+    box-shadow: 0 1px 2px rgba(4, 120, 87, 0.15);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--clinic-primary-container-hover);
+    border-color: var(--clinic-primary-container-hover);
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(4, 120, 87, 0.25);
+}
+
+.btn-outline-primary {
+    background-color: var(--clinic-surface);
+    border: 1px solid var(--clinic-outline);
+    color: var(--clinic-primary-container);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--clinic-mint-light);
+    border-color: var(--clinic-primary-container);
+    color: var(--clinic-primary-container);
+}
+
+.btn-outline-secondary {
+    background-color: var(--clinic-surface);
+    border: 1px solid var(--clinic-outline);
+    color: var(--clinic-text);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--clinic-surface-low);
+    border-color: #94a3b8;
+    color: var(--clinic-text);
+}
+
+.btn-success {
+    background-color: var(--clinic-success);
+    border-color: var(--clinic-success);
+    color: #ffffff;
+}
+
+.btn-success:hover {
+    background-color: #047857;
+    border-color: #047857;
+}
+
+/* ==========================================================
+   STATUS BADGES & TRIAGE CHIPS (PILL SHAPES)
+   ========================================================== */
+
+.badge {
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+/* Semantic Badges */
+.badge-completed, .badge-verified, .badge-fully-paid, .badge-paid {
+    background-color: var(--clinic-success-bg);
+    color: var(--clinic-success-text);
+    border: 1px solid var(--clinic-success-border);
+}
+
+.badge-draft, .badge-scheduled, .badge-ordered, .badge-pending {
+    background-color: var(--clinic-warning-bg);
+    color: var(--clinic-warning-text);
+    border: 1px solid var(--clinic-warning-border);
+}
+
+.badge-cancelled, .badge-unpaid, .badge-emergency {
+    background-color: var(--clinic-danger-bg);
+    color: var(--clinic-danger-text);
+    border: 1px solid var(--clinic-danger-border);
+}
+
+.badge-partially-paid, .badge-observation {
+    background-color: var(--clinic-info-bg);
+    color: var(--clinic-info-text);
+    border: 1px solid var(--clinic-info-border);
+}
+
+.badge-neutral {
+    background-color: var(--clinic-surface-container);
+    color: var(--clinic-text-muted);
+    border: 1px solid var(--clinic-border);
+}
+
+/* Pulse status dot */
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+    display: inline-block;
+}
+
+/* ==========================================================
+   FORMS & INPUT CONTROLS
+   ========================================================== */
+
+.form-control, .form-select {
+    background-color: var(--clinic-surface);
+    border: 1px solid var(--clinic-outline);
+    border-radius: var(--radius-md);
+    color: var(--clinic-text);
+    font-size: 0.88rem;
+    padding: 0.48rem 0.75rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--clinic-surface);
+    border-color: var(--clinic-mint);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    outline: none;
+}
+
+.form-control::placeholder {
+    color: #94a3b8;
+}
+
+.form-label {
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--clinic-text);
+    margin-bottom: 0.35rem;
+}
+
+.input-group-text {
+    background-color: var(--clinic-surface-low);
+    border-color: var(--clinic-outline);
+    color: var(--clinic-text-dim);
+}
+
+/* ==========================================================
+   TABLES (CLINICAL DATA GRIDS)
+   ========================================================== */
+
+.table {
+    color: var(--clinic-text);
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+.table > thead {
+    background-color: var(--clinic-surface-low);
+    color: var(--clinic-text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.table > thead th {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--clinic-border);
+}
+
+.table > tbody td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--clinic-border);
+    font-size: 0.86rem;
+}
+
+.table-hover > tbody > tr:hover {
+    background-color: rgba(248, 250, 255, 0.8);
+}
+
+/* ==========================================================
+   SUB-NAV BAR & CONTEXT RIBBON
+   ========================================================== */
+
+.context-subnav {
+    background-color: var(--clinic-surface);
+    border-bottom: 1px solid var(--clinic-border);
+    padding: 0.5rem 1.25rem;
+    margin: -1rem -1.25rem 1.25rem -1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.subnav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.subnav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--clinic-text-dim);
+    font-size: 0.84rem;
+    font-weight: 600;
+    padding: 0.4rem 0;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
     transition: all 0.15s;
 }
 
-.patient-view-toggle .btn.active {
-    background-color: #ffffff;
-    color: var(--clinic-primary);
-    font-weight: 700;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.subnav-link:hover {
+    color: var(--clinic-primary-container);
 }
 
-/* Four Big Cards on Patient Detail */
-.four-cards-container {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.25rem;
-    margin-top: 1rem;
-}
-
-@media (max-width: 992px) {
-    .four-cards-container {
-        grid-template-columns: 1fr;
-    }
-}
-
-.big-card {
-    background: #ffffff;
-    border: 1px solid var(--clinic-border);
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    display: flex;
-    flex-direction: column;
-    min-height: 380px;
-}
-
-.big-card-header {
-    padding: 0.85rem 1.2rem;
-    border-bottom: 1px solid var(--clinic-border);
-    background-color: #f8fafc;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.big-card-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.big-card-body {
-    padding: 1.2rem;
-    flex: 1;
-    overflow-y: auto;
-}
-
-/* Encounter Workspace Desktop Layout */
-.encounter-desktop-layout {
-    display: grid;
-    grid-template-columns: 65% 35%;
-    gap: 1.25rem;
-    align-items: start;
-}
-
-@media (max-width: 1024px) {
-    .encounter-desktop-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-.clinical-dominant-area {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.supporting-sidebar-area {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-/* Clinical hierarchy */
-.clinical-card {
-    background: #ffffff;
-    border: 1px solid var(--clinic-border);
-    border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.clinical-card-header {
-    background-color: #f1f5f9;
-    padding: 0.75rem 1.1rem;
-    border-bottom: 1px solid var(--clinic-border);
-    font-weight: 700;
-    font-size: 0.98rem;
-    color: #0f172a;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.clinical-card-body {
-    padding: 1rem 1.1rem;
-}
-
-/* Form section grouping */
-.form-section-title {
-    font-size: 0.9rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--clinic-primary);
-    border-bottom: 2px solid #e2e8f0;
-    padding-bottom: 0.4rem;
-    margin-bottom: 1rem;
-    margin-top: 1rem;
-}
-
-/* Phone list vertical display in table cell */
-.phone-cell-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.phone-cell-list .phone-item {
-    font-size: 0.85rem;
-    font-family: monospace;
+.subnav-link.active {
+    color: var(--clinic-primary-container);
+    border-bottom-color: var(--clinic-primary-container);
 }
 
 /* Flash alerts */
 .flash-container {
     position: fixed;
-    top: calc(var(--navbar-height) + 10px);
+    top: calc(var(--navbar-height) + 12px);
     right: 20px;
     z-index: 1060;
     max-width: 420px;
 }
-
-/* Status badges */
-.badge-unpaid { background-color: #ef4444; color: white; }
-.badge-partially_paid { background-color: #f59e0b; color: white; }
-.badge-fully_paid { background-color: #10b981; color: white; }
-

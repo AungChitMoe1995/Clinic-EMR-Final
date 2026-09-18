@@ -1,66 +1,80 @@
 {% extends "base.html" %}
 
-{% block title %}{{ patient.full_name }} ({{ patient.registration_number }}) — Detail{% endblock %}
+{% block title %}{{ patient.full_name }} ({{ patient.registration_number }}) &mdash; Patient Detail{% endblock %}
 
 {% block content %}
-<!-- Patient Header Banner -->
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-3">
-            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 50px; height: 50px;">
-                {{ patient.patient_name[:1] }}
+<!-- Patient Master Header Banner Card (Stitch Design) -->
+<div class="patient-master-banner mb-3">
+    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+        <!-- Patient Identity & Demographics -->
+        <div class="d-flex align-items-start gap-3">
+            <div class="position-relative">
+                <div class="patient-avatar-box">
+                    {{ patient.patient_name[:2]|upper }}
+                </div>
+                <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1" title="Active Patient"></span>
             </div>
             <div>
-                <h5 class="mb-0 fw-bold text-dark">
-                    {{ patient.full_name }}
-                    <span class="badge bg-secondary ms-2 fw-normal" style="font-size: 0.85rem;">{{ patient.registration_number }}</span>
-                    <span class="badge {% if patient.gender == 'Male' %}bg-info text-dark{% else %}bg-danger-subtle text-danger{% endif %} ms-1">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <h4 class="fw-bold mb-0 text-dark">
+                        {{ patient.full_name }}
+                    </h4>
+                    <span class="badge badge-neutral font-monospace">{{ patient.registration_number }}</span>
+                    <span class="badge {% if patient.gender == 'Male' %}badge-info{% else %}badge-danger{% endif %}">
                         {{ patient.gender }}
                     </span>
-                </h5>
-                <div class="text-muted small mt-1">
-                    <span><i class="bi bi-calendar-event"></i> <strong>Age:</strong> {{ patient.age_formatted }}</span> &bull;
-                    <span><i class="bi bi-telephone"></i> <strong>Phone:</strong> {{ patient.primary_phone or 'N/A' }}</span> &bull;
-                    <span><i class="bi bi-geo-alt"></i> {{ patient.city_township or '' }}{% if patient.city_township and patient.state_region %}, {% endif %}{{ patient.state_region or '' }}</span>
+                    <span class="badge badge-completed"><i class="bi bi-shield-check"></i> ACTIVE</span>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-3 text-muted small">
+                    <span><i class="bi bi-calendar3"></i> {{ patient.age_formatted }}</span>
+                    <span><i class="bi bi-telephone"></i> {{ patient.primary_phone or 'No primary phone' }}</span>
+                    <span><i class="bi bi-geo-alt"></i> {{ patient.city_township or '' }}{% if patient.city_township and patient.state_region %}, {% endif %}{{ patient.state_region or 'Myanmar' }}</span>
+                    <span><i class="bi bi-card-heading"></i> NRC: {{ patient.nrc_number or '—' }}</span>
                 </div>
             </div>
         </div>
-        <div class="d-flex gap-2">
-            <a href="{{ url_for('patients.edit_patient', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-pencil"></i> Edit Demographics
+
+        <!-- Quick Actions -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="{{ url_for('patients.patients_list') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Patient List
             </a>
-            <a href="{{ url_for('encounters.new_encounter', patient_id=patient.id) }}" class="btn btn-primary btn-sm px-3 shadow-sm">
+            <a href="{{ url_for('patients.edit_patient', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-pencil"></i> Edit Profile
+            </a>
+            <a href="{{ url_for('encounters.new_encounter', patient_id=patient.id) }}" class="btn btn-primary btn-sm shadow-sm">
                 <i class="bi bi-journal-plus"></i> + New Encounter
             </a>
         </div>
     </div>
 </div>
 
-<!-- Exactly FOUR BIG CARDS (Locked Requirements 27 & 83) -->
+<!-- Four Cards Clinical Layout -->
 <div class="four-cards-container">
 
     <!-- CARD 1: OVERVIEW -->
-    <div class="big-card">
-        <div class="big-card-header">
-            <h6 class="big-card-title text-primary">
-                <i class="bi bi-person-lines-fill"></i> 1. Overview & Demographics
-            </h6>
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                <i class="bi bi-person-lines-fill text-primary"></i> 1. Overview & Demographics
+            </span>
+            <a href="{{ url_for('patients.edit_patient', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">Edit</a>
         </div>
-        <div class="big-card-body">
+        <div class="card-body p-3">
             <div class="row g-2 mb-3 small">
-                <div class="col-6"><strong>Reg No:</strong> {{ patient.registration_number }}</div>
+                <div class="col-6"><strong>Reg No:</strong> <span class="badge badge-neutral font-monospace">{{ patient.registration_number }}</span></div>
                 <div class="col-6"><strong>DOB:</strong> {{ patient.date_of_birth.strftime('%d %b %Y') if patient.date_of_birth else 'Unspecified' }}</div>
                 <div class="col-6"><strong>Gender:</strong> {{ patient.gender }}</div>
                 <div class="col-6"><strong>Dynamic Age:</strong> {{ patient.age_formatted }}</div>
                 <div class="col-6"><strong>Marital Status:</strong> {{ patient.marital_status or '—' }}</div>
                 <div class="col-6"><strong>Blood Group:</strong> {{ patient.blood_group or '—' }}</div>
-                <div class="col-6"><strong>NRC:</strong> {{ patient.nrc_number or '—' }}</div>
+                <div class="col-6"><strong>NRC Number:</strong> {{ patient.nrc_number or '—' }}</div>
                 <div class="col-6"><strong>Occupation:</strong> {{ patient.occupation or '—' }}</div>
                 <div class="col-12">
                     <strong>All Phone Numbers:</strong>
-                    <div class="mt-1">
+                    <div class="mt-1 d-flex flex-wrap gap-1">
                         {% for ph in patient.phones %}
-                            <span class="badge bg-light text-dark border me-1"><i class="bi bi-telephone"></i> {{ ph.phone_number }} ({{ ph.label }})</span>
+                            <span class="badge badge-neutral"><i class="bi bi-telephone text-muted"></i> {{ ph.phone_number }} ({{ ph.label }})</span>
                         {% else %}
                             <span class="text-muted">None</span>
                         {% endfor %}
@@ -69,22 +83,22 @@
             </div>
 
             <div class="mb-3">
-                <h6 class="small fw-bold text-dark border-bottom pb-1 mb-1"><i class="bi bi-capsule"></i> Current Medications / Drug History:</h6>
-                <div class="p-2 bg-light rounded small text-dark">
+                <label class="small fw-bold text-dark border-bottom pb-1 mb-1 d-block"><i class="bi bi-capsule text-primary"></i> Current Medications / Drug History:</label>
+                <div class="p-2 bg-light rounded-3 small text-dark">
                     {{ current_medications if current_medications else 'No current medications recorded in history.' }}
                 </div>
             </div>
 
             <div class="mb-3">
-                <h6 class="small fw-bold text-dark border-bottom pb-1 mb-1"><i class="bi bi-journal-text"></i> Patient Summary:</h6>
-                <div class="p-2 bg-light rounded small text-dark">
+                <label class="small fw-bold text-dark border-bottom pb-1 mb-1 d-block"><i class="bi bi-journal-text text-primary"></i> Patient Summary:</label>
+                <div class="p-2 bg-light rounded-3 small text-dark">
                     {{ patient.patient_summary if patient.patient_summary else 'No clinical summary recorded.' }}
                 </div>
             </div>
 
             <div>
-                <h6 class="small fw-bold text-dark border-bottom pb-1 mb-1"><i class="bi bi-sticky"></i> Administrative Notes:</h6>
-                <div class="p-2 bg-light rounded small text-muted">
+                <label class="small fw-bold text-dark border-bottom pb-1 mb-1 d-block"><i class="bi bi-sticky text-muted"></i> Administrative Notes:</label>
+                <div class="p-2 bg-light rounded-3 small text-muted">
                     {{ patient.notes if patient.notes else 'No administrative notes.' }}
                 </div>
             </div>
@@ -92,25 +106,27 @@
     </div>
 
     <!-- CARD 2: ENCOUNTERS -->
-    <div class="big-card">
-        <div class="big-card-header">
-            <h6 class="big-card-title text-success">
-                <i class="bi bi-journal-medical"></i> 2. Encounters
-            </h6>
-            <a href="{{ url_for('encounters.new_encounter', patient_id=patient.id) }}" class="btn btn-outline-success btn-sm py-0 px-2">
-                <i class="bi bi-plus-lg"></i> New Encounter
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                <i class="bi bi-journal-medical text-primary"></i> 2. Encounters
+            </span>
+            <a href="{{ url_for('encounters.new_encounter', patient_id=patient.id) }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-lg"></i> New Visit
             </a>
         </div>
-        <div class="big-card-body p-0">
+        <div class="card-body p-0">
             {% if encounters %}
                 <div class="list-group list-group-flush small">
                     {% for enc in encounters %}
                         <a href="{{ url_for('encounters.encounter_detail', encounter_id=enc.id) }}" class="list-group-item list-group-item-action py-2 px-3">
                             <div class="d-flex w-100 justify-content-between align-items-center">
-                                <strong><i class="bi bi-calendar3"></i> {{ enc.encounter_date.strftime('%d %b %Y, %I:%M %p') }}</strong>
-                                <span class="badge {% if enc.status == 'completed' %}bg-success{% elif enc.status == 'draft' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                    {{ enc.status }}
-                                </span>
+                                <strong class="text-dark"><i class="bi bi-calendar3 text-primary"></i> {{ enc.encounter_date.strftime('%d %b %Y, %I:%M %p') }}</strong>
+                                {% if enc.status == 'completed' %}
+                                    <span class="badge badge-completed">{{ enc.status|upper }}</span>
+                                {% else %}
+                                    <span class="badge badge-draft">{{ enc.status|upper }}</span>
+                                {% endif %}
                             </div>
                             <div class="text-muted mt-1">
                                 <span><i class="bi bi-person"></i> Doctor: {{ enc.doctor.display_name if enc.doctor else 'Unassigned' }}</span>
@@ -123,25 +139,26 @@
                 </div>
             {% else %}
                 <div class="p-4 text-center text-muted small">
-                    <i class="bi bi-folder2-open fs-2 d-block mb-1"></i>
-                    No encounters on record. Click <strong>New Encounter</strong> to create one.
+                    <i class="bi bi-folder2-open fs-2 d-block mb-1 text-outline"></i>
+                    No encounters on record. Click <strong>New Visit</strong> to create one.
                 </div>
             {% endif %}
         </div>
     </div>
 
     <!-- CARD 3: INVESTIGATIONS -->
-    <div class="big-card">
-        <div class="big-card-header">
-            <h6 class="big-card-title text-info">
-                <i class="bi bi-clipboard-pulse"></i> 3. Consolidated Investigations
-            </h6>
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                <i class="bi bi-clipboard2-pulse text-primary"></i> 3. Consolidated Investigations
+            </span>
+            <span class="badge badge-neutral">{{ investigations|length }} Orders</span>
         </div>
-        <div class="big-card-body p-0">
+        <div class="card-body p-0">
             {% if investigations %}
                 <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle mb-0 small">
-                        <thead class="table-light">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead>
                             <tr>
                                 <th>Ordered Date</th>
                                 <th>Investigation</th>
@@ -155,7 +172,7 @@
                                 <td>{{ inv.ordered_date.strftime('%d %b %Y') }}</td>
                                 <td class="fw-semibold">{{ inv.investigation_name }}</td>
                                 <td>
-                                    <span class="badge {% if inv.status == 'Completed' %}bg-success{% elif inv.status == 'Ordered' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                    <span class="badge {% if inv.status == 'Completed' %}badge-completed{% elif inv.status == 'Ordered' %}badge-draft{% else %}badge-neutral{% endif %}">
                                         {{ inv.status }}
                                     </span>
                                 </td>
@@ -167,7 +184,7 @@
                 </div>
             {% else %}
                 <div class="p-4 text-center text-muted small">
-                    <i class="bi bi-file-earmark-medical fs-2 d-block mb-1"></i>
+                    <i class="bi bi-file-earmark-medical fs-2 d-block mb-1 text-outline"></i>
                     No investigation orders on record for this patient.
                 </div>
             {% endif %}
@@ -175,31 +192,30 @@
     </div>
 
     <!-- CARD 4: BILLING / COLLECTIONS -->
-    <div class="big-card">
-        <div class="big-card-header">
-            <h6 class="big-card-title text-warning text-dark">
-                <i class="bi bi-receipt"></i> 4. Billing / Collections
-            </h6>
-            <!-- Add Voucher Button with Encounter Selector (Requirements 31 & 77) -->
-            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#selectEncounterVoucherModal">
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark d-flex align-items-center gap-2">
+                <i class="bi bi-receipt text-primary"></i> 4. Billing / Collections
+            </span>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#selectEncounterVoucherModal">
                 <i class="bi bi-plus-lg"></i> Add Voucher
             </button>
         </div>
-        <div class="big-card-body p-0">
+        <div class="card-body p-0">
             <!-- Financial Summary Bar -->
             <div class="d-flex justify-content-around bg-light py-2 border-bottom text-center small">
                 <div>
                     <span class="text-muted d-block">Total Billed</span>
-                    <strong class="text-dark">{{ "%.2f"|format(billing_summary.total_billed) }} MMK</strong>
+                    <strong class="text-dark">{{ "%.0f"|format(billing_summary.total_billed) }} MMK</strong>
                 </div>
                 <div>
                     <span class="text-muted d-block">Total Collected</span>
-                    <strong class="text-success">{{ "%.2f"|format(billing_summary.total_paid) }} MMK</strong>
+                    <strong class="text-success">{{ "%.0f"|format(billing_summary.total_paid) }} MMK</strong>
                 </div>
                 <div>
                     <span class="text-muted d-block">Outstanding</span>
                     <strong class="{% if billing_summary.total_outstanding > 0 %}text-danger{% else %}text-muted{% endif %}">
-                        {{ "%.2f"|format(billing_summary.total_outstanding) }} MMK
+                        {{ "%.0f"|format(billing_summary.total_outstanding) }} MMK
                     </strong>
                 </div>
             </div>
@@ -209,19 +225,19 @@
                     {% for v in billing_summary.vouchers %}
                         <a href="{{ url_for('billing.voucher_detail', voucher_id=v.id) }}" class="list-group-item list-group-item-action py-2 px-3">
                             <div class="d-flex w-100 justify-content-between align-items-center">
-                                <strong>{{ v.voucher_number }}</strong>
+                                <strong style="color: var(--clinic-primary-container);">{{ v.voucher_number }}</strong>
                                 <span class="badge badge-{{ v.status }}">{{ v.status|replace('_', ' ')|capitalize }}</span>
                             </div>
                             <div class="d-flex justify-content-between text-muted mt-1">
                                 <span>{{ v.voucher_date.strftime('%d %b %Y') }} (Encounter #{{ v.encounter_id }})</span>
-                                <span class="fw-bold text-dark">{{ "%.2f"|format(v.total) }} MMK</span>
+                                <span class="fw-bold text-dark">{{ "%.0f"|format(v.total) }} MMK</span>
                             </div>
                         </a>
                     {% endfor %}
                 </div>
             {% else %}
                 <div class="p-4 text-center text-muted small">
-                    <i class="bi bi-cash-coin fs-2 d-block mb-1"></i>
+                    <i class="bi bi-cash-coin fs-2 d-block mb-1 text-outline"></i>
                     No vouchers generated yet.
                 </div>
             {% endif %}
@@ -230,7 +246,7 @@
 
 </div>
 
-<!-- Modal: Select Encounter for New Voucher (Requirement 31 & 77) -->
+<!-- Modal: Select Encounter for New Voucher -->
 <div class="modal fade" id="selectEncounterVoucherModal" tabindex="-1" aria-labelledby="selectEncounterModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -244,7 +260,7 @@
                     {% if encounters %}
                         <div class="mb-3">
                             <label for="encounter_id" class="form-label fw-semibold">Patient Encounter:</label>
-                            <select name="encounter_id" id="encounter_id" class="form-select form-select-sm" required>
+                            <select name="encounter_id" id="encounter_id" class="form-select" required>
                                 {% for enc in encounters %}
                                     <option value="{{ enc.id }}">
                                         Encounter #{{ enc.id }} &mdash; {{ enc.encounter_date.strftime('%d %b %Y %I:%M %p') }} (Dr. {{ enc.doctor.name if enc.doctor else 'Unassigned' }})
@@ -259,7 +275,7 @@
                     {% endif %}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                     {% if encounters %}
                         <button type="submit" class="btn btn-primary btn-sm">Proceed to Voucher</button>
                     {% endif %}
@@ -269,4 +285,3 @@
     </div>
 </div>
 {% endblock %}
-

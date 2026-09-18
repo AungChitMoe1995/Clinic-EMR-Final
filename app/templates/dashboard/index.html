@@ -1,212 +1,249 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard — Myanmar Clinic EMR{% endblock %}
+{% block title %}Clinical Dashboard — Myanmar Clinic EMR{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-speedometer2"></i> Clinic Dashboard</h5>
-        <small class="text-muted">Today's clinical activity &mdash; {{ today.strftime('%A, %d %B %Y') }}</small>
+<div class="d-flex flex-column gap-3 mb-4">
+    <!-- Top Action & Navigation Strip -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+        <div>
+            <h4 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                <span class="clinic-brand-icon" style="background-color: var(--clinic-primary-container); width: 32px; height: 32px;">
+                    <i class="bi bi-speedometer2"></i>
+                </span>
+                <span>Clinical Dashboard</span>
+            </h4>
+            <span class="text-muted small">Live activity overview &bull; {{ today.strftime('%A, %d %B %Y') }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ url_for('patients.new_patient') }}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-person-plus-fill"></i> New Patient
+            </a>
+            <a href="{{ url_for('appointments.new_appointment') }}" class="btn btn-outline-secondary shadow-sm">
+                <i class="bi bi-calendar-plus"></i> New Appointment
+            </a>
+        </div>
     </div>
-    <div class="d-flex gap-2">
-        <a href="{{ url_for('patients.new_patient') }}" class="btn btn-primary btn-sm px-3 shadow-sm">
-            <i class="bi bi-person-plus-fill"></i> New Patient
-        </a>
-        <a href="{{ url_for('appointments.new_appointment') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-calendar-plus"></i> New Appointment
-        </a>
-    </div>
-</div>
 
-<!-- Key Actionable Metrics Row -->
-<div class="row g-3 mb-4">
-    <div class="col-md-2 col-sm-4 col-6">
-        <div class="card border-0 shadow-sm text-center py-3 bg-white">
-            <small class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Today's Patients</small>
-            <div class="fs-3 fw-bold text-primary my-1">{{ today_registrations }}</div>
-            <small class="text-muted"><i class="bi bi-person-plus"></i> Registered</small>
-        </div>
-    </div>
-    <div class="col-md-2 col-sm-4 col-6">
-        <div class="card border-0 shadow-sm text-center py-3 bg-white">
-            <small class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Encounters</small>
-            <div class="fs-3 fw-bold text-success my-1">{{ today_encounters }}</div>
-            <small class="text-muted"><i class="bi bi-journal-medical"></i> Consultations</small>
-        </div>
-    </div>
-    <div class="col-md-2 col-sm-4 col-6">
-        <div class="card border-0 shadow-sm text-center py-3 bg-white">
-            <small class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Appointments</small>
-            <div class="fs-3 fw-bold text-info text-dark my-1">{{ today_appointments }}</div>
-            <small class="text-muted"><i class="bi bi-calendar-check"></i> Booked Today</small>
-        </div>
-    </div>
-    <div class="col-md-2 col-sm-4 col-6">
-        <div class="card border-0 shadow-sm text-center py-3 bg-white">
-            <small class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Pending Labs</small>
-            <div class="fs-3 fw-bold text-warning text-dark my-1">{{ pending_investigations }}</div>
-            <small class="text-muted"><i class="bi bi-hourglass-split"></i> Awaiting Result</small>
-        </div>
-    </div>
-    <div class="col-md-2 col-sm-4 col-6">
-        <div class="card border-0 shadow-sm text-center py-3 bg-white">
-            <small class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Today's Billing</small>
-            <div class="fs-5 fw-bold text-dark my-1">{{ "%.0f"|format(today_billed) }} <small class="fw-normal fs-6">MMK</small></div>
-            <small class="text-muted"><i class="bi bi-receipt"></i> Total Invoiced</small>
-        </div>
-    </div>
-    <div class="col-md-2 col-sm-4 col-6">
-        <div class="card border-0 shadow-sm text-center py-3 bg-white">
-            <small class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Collections</small>
-            <div class="fs-5 fw-bold text-success my-1">{{ "%.0f"|format(today_collected) }} <small class="fw-normal fs-6">MMK</small></div>
-            <small class="text-muted"><i class="bi bi-cash-coin"></i> Total Collected</small>
-        </div>
-    </div>
-</div>
-
-<!-- Doctor-Specific View (If Logged in Doctor) -->
-{% if current_user.is_doctor() %}
-<div class="row g-3 mb-4">
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
-                <span class="small fw-bold"><i class="bi bi-calendar-day"></i> My Appointments Today</span>
-                <span class="badge bg-white text-primary">{{ doctor_today_appointments|length }}</span>
+    <!-- Key Actionable Metrics (Clinical Emerald Design) -->
+    <div class="row g-3">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Today's Intake</span>
+                    <div class="stat-tile-value text-primary">{{ today_registrations }}</div>
+                    <span class="text-muted small"><i class="bi bi-person-check"></i> Registered</span>
+                </div>
+                <div class="stat-tile-icon">
+                    <i class="bi bi-people-fill"></i>
+                </div>
             </div>
-            <div class="card-body p-0">
-                {% if doctor_today_appointments %}
-                    <ul class="list-group list-group-flush small">
-                        {% for app in doctor_today_appointments %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-                            <div>
-                                <span class="fw-bold">{{ app.formatted_time }}</span> &mdash;
-                                <a href="{{ url_for('patients.patient_detail', patient_id=app.patient.id) }}" class="text-dark fw-semibold text-decoration-none">
-                                    {{ app.patient.full_name }}
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Encounters</span>
+                    <div class="stat-tile-value text-success">{{ today_encounters }}</div>
+                    <span class="text-muted small"><i class="bi bi-stethoscope"></i> Consults</span>
+                </div>
+                <div class="stat-tile-icon" style="color: var(--clinic-success);">
+                    <i class="bi bi-journal-medical"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Appointments</span>
+                    <div class="stat-tile-value" style="color: var(--clinic-info);">{{ today_appointments }}</div>
+                    <span class="text-muted small"><i class="bi bi-clock"></i> Booked</span>
+                </div>
+                <div class="stat-tile-icon" style="color: var(--clinic-info);">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Pending Labs</span>
+                    <div class="stat-tile-value" style="color: var(--clinic-warning);">{{ pending_investigations }}</div>
+                    <span class="text-muted small"><i class="bi bi-hourglass-split"></i> Awaiting</span>
+                </div>
+                <div class="stat-tile-icon" style="color: var(--clinic-warning);">
+                    <i class="bi bi-eyedropper"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Today's Invoiced</span>
+                    <div class="stat-tile-value" style="font-size: 1.35rem;">{{ "%.0f"|format(today_billed) }}</div>
+                    <span class="text-muted small">MMK Total</span>
+                </div>
+                <div class="stat-tile-icon">
+                    <i class="bi bi-receipt"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Collected</span>
+                    <div class="stat-tile-value text-success" style="font-size: 1.35rem;">{{ "%.0f"|format(today_collected) }}</div>
+                    <span class="text-muted small">MMK Received</span>
+                </div>
+                <div class="stat-tile-icon" style="color: var(--clinic-primary-container);">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Doctor-Specific View (If Logged in Doctor) -->
+    {% if current_user.is_doctor() %}
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark"><i class="bi bi-calendar-day text-primary"></i> My Appointments Today</span>
+                    <span class="badge badge-neutral">{{ doctor_today_appointments|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if doctor_today_appointments %}
+                        <ul class="list-group list-group-flush small">
+                            {% for app in doctor_today_appointments %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                                <div>
+                                    <span class="fw-bold text-primary">{{ app.formatted_time }}</span> &mdash;
+                                    <a href="{{ url_for('patients.patient_detail', patient_id=app.patient.id) }}" class="text-dark fw-semibold text-decoration-none">
+                                        {{ app.patient.full_name }}
+                                    </a>
+                                    <small class="text-muted d-block">{{ app.reason or 'Consultation' }}</small>
+                                </div>
+                                <a href="{{ url_for('appointments.start_encounter_from_appointment', appointment_id=app.id) }}" class="btn btn-primary btn-sm">
+                                    Start Visit
                                 </a>
-                                <small class="text-muted d-block">{{ app.reason or 'Consultation' }}</small>
-                            </div>
-                            <a href="{{ url_for('appointments.start_encounter_from_appointment', appointment_id=app.id) }}" class="btn btn-outline-success btn-sm py-0 px-2">
-                                Start Visit
-                            </a>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="p-3 text-center text-muted small">No scheduled appointments for you today.</div>
-                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="p-4 text-center text-muted small">No scheduled appointments for you today.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark"><i class="bi bi-person-workspace text-primary"></i> My Recent Encounters</span>
+                    <a href="{{ url_for('encounters.encounters_list') }}" class="btn btn-outline-secondary btn-sm">All</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if doctor_recent_encounters %}
+                        <ul class="list-group list-group-flush small">
+                            {% for enc in doctor_recent_encounters %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                                <div>
+                                    <a href="{{ url_for('encounters.encounter_detail', encounter_id=enc.id) }}" class="fw-semibold text-decoration-none" style="color: var(--clinic-primary-container);">
+                                        {{ enc.patient.full_name }} ({{ enc.patient.registration_number }})
+                                    </a>
+                                    <small class="text-muted d-block">{{ enc.encounter_date.strftime('%d %b %Y, %I:%M %p') }} &bull; {{ enc.diagnoses_summary }}</small>
+                                </div>
+                                <span class="badge badge-completed">{{ enc.status }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="p-4 text-center text-muted small">No recent encounters recorded.</div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
-                <span class="small fw-bold"><i class="bi bi-person-workspace"></i> My Recent Encounters</span>
-                <a href="{{ url_for('encounters.encounters_list') }}" class="btn btn-outline-light btn-sm py-0 px-2">All</a>
-            </div>
-            <div class="card-body p-0">
-                {% if doctor_recent_encounters %}
-                    <ul class="list-group list-group-flush small">
-                        {% for enc in doctor_recent_encounters %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-                            <div>
-                                <a href="{{ url_for('encounters.encounter_detail', encounter_id=enc.id) }}" class="fw-semibold text-primary text-decoration-none">
-                                    {{ enc.patient.full_name }} ({{ enc.patient.registration_number }})
-                                </a>
-                                <small class="text-muted d-block">{{ enc.encounter_date.strftime('%d %b %Y, %I:%M %p') }} &bull; {{ enc.diagnoses_summary }}</small>
-                            </div>
-                            <span class="badge bg-success">{{ enc.status }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="p-3 text-center text-muted small">No recent encounters recorded.</div>
-                {% endif %}
+    <!-- General Clinic Tables: Recent Activity & Low Stock Alerts -->
+    <div class="row g-3">
+        <!-- Recent Encounters -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark"><i class="bi bi-clock-history text-primary"></i> Recent Completed Encounters</span>
+                    <a href="{{ url_for('encounters.encounters_list') }}" class="btn btn-outline-secondary btn-sm">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_encounters %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Date/Time</th>
+                                        <th>Patient</th>
+                                        <th>Doctor</th>
+                                        <th>Diagnosis</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for enc in recent_encounters %}
+                                    <tr>
+                                        <td><span class="text-muted small">{{ enc.encounter_date.strftime('%d %b %H:%M') }}</span></td>
+                                        <td>
+                                            <a href="{{ url_for('patients.patient_detail', patient_id=enc.patient.id) }}" class="fw-semibold text-dark text-decoration-none">
+                                                {{ enc.patient.full_name }}
+                                            </a>
+                                        </td>
+                                        <td><span class="small">{{ enc.doctor.name if enc.doctor else 'Unassigned' }}</span></td>
+                                        <td><span class="badge badge-neutral">{{ enc.diagnoses_summary|truncate(25) }}</span></td>
+                                        <td class="text-end">
+                                            <a href="{{ url_for('encounters.encounter_detail', encounter_id=enc.id) }}" class="btn btn-outline-primary btn-sm">
+                                                Open
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="p-4 text-center text-muted small">No recent encounters recorded.</div>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
-</div>
-{% endif %}
 
-<!-- General Clinic Tables: Recent Activity & Low Stock Alerts -->
-<div class="row g-3">
-    <!-- Recent Encounters -->
-    <div class="col-lg-7">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
-                <span class="small fw-bold text-dark"><i class="bi bi-clock-history text-primary"></i> Recent Completed Encounters</span>
-                <a href="{{ url_for('encounters.encounters_list') }}" class="btn btn-outline-secondary btn-sm py-0 px-2">View All</a>
-            </div>
-            <div class="card-body p-0">
-                {% if recent_encounters %}
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 small">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Date/Time</th>
-                                    <th>Patient</th>
-                                    <th>Doctor</th>
-                                    <th>Diagnosis</th>
-                                    <th class="text-end">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for enc in recent_encounters %}
-                                <tr>
-                                    <td>{{ enc.encounter_date.strftime('%d %b %H:%M') }}</td>
-                                    <td>
-                                        <a href="{{ url_for('patients.patient_detail', patient_id=enc.patient.id) }}" class="fw-semibold text-dark text-decoration-none">
-                                            {{ enc.patient.full_name }}
-                                        </a>
-                                    </td>
-                                    <td>{{ enc.doctor.name if enc.doctor else 'Unassigned' }}</td>
-                                    <td>{{ enc.diagnoses_summary|truncate(25) }}</td>
-                                    <td class="text-end">
-                                        <a href="{{ url_for('encounters.encounter_detail', encounter_id=enc.id) }}" class="btn btn-outline-primary btn-sm py-0 px-2">
-                                            Open
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="p-4 text-center text-muted small">No recent encounters recorded.</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Low Stock Inventory Alerts (Requirement 53) -->
-    <div class="col-lg-5">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
-                <span class="small fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Low Stock Medicines & Supplies</span>
-                <a href="{{ url_for('inventory.inventory_list', low_stock='1') }}" class="btn btn-outline-danger btn-sm py-0 px-2">Inventory</a>
-            </div>
-            <div class="card-body p-0">
-                {% if low_stock_items %}
-                    <ul class="list-group list-group-flush small">
-                        {% for itm in low_stock_items %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-                            <div>
-                                <span class="fw-semibold text-dark">{{ itm.item_name }}</span>
-                                <small class="text-muted d-block">Reorder Level: {{ itm.reorder_level }} {{ itm.unit or '' }}</small>
-                            </div>
-                            <span class="badge bg-danger fs-6">{{ itm.quantity }} {{ itm.unit or '' }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="p-4 text-center text-success small">
-                        <i class="bi bi-check-circle fs-3 d-block mb-1"></i>
-                        All inventory stocks are within safe operational levels.
-                    </div>
-                {% endif %}
+        <!-- Low Stock Inventory Alerts -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Low Stock Medicines & Supplies</span>
+                    <a href="{{ url_for('inventory.inventory_list', low_stock='1') }}" class="btn btn-outline-danger btn-sm">Inventory</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if low_stock_items %}
+                        <ul class="list-group list-group-flush">
+                            {% for itm in low_stock_items %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                                <div>
+                                    <span class="fw-semibold text-dark">{{ itm.item_name }}</span>
+                                    <small class="text-muted d-block">Reorder Level: {{ itm.reorder_level }} {{ itm.unit or '' }}</small>
+                                </div>
+                                <span class="badge badge-cancelled fs-7">{{ itm.quantity }} {{ itm.unit or '' }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="p-4 text-center text-success small">
+                            <i class="bi bi-check-circle fs-3 d-block mb-1"></i>
+                            All inventory stocks are within safe operational levels.
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-

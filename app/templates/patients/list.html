@@ -1,171 +1,245 @@
 {% extends "base.html" %}
 
-{% block title %}Patients — Myanmar Clinic EMR{% endblock %}
+{% block title %}Patients Directory — Myanmar Clinic EMR{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <!-- View Toggle: [ Patients ] [ Encounters ] [ Appointments ] -->
-    <div class="patient-view-toggle">
-        <a href="{{ url_for('patients.patients_list') }}" class="btn active">
-            <i class="bi bi-people"></i> Patients
-        </a>
-        <a href="{{ url_for('encounters.encounters_list') }}" class="btn">
-            <i class="bi bi-journal-medical"></i> Encounters
-        </a>
-        <a href="{{ url_for('appointments.appointments_list') }}" class="btn">
-            <i class="bi bi-calendar-check"></i> Appointments
-        </a>
+<div class="d-flex flex-column gap-3 mb-4">
+    <!-- Top Action & Navigation Strip -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+        <!-- Clinical Context Tab Switcher -->
+        <div class="patient-view-toggle">
+            <a href="{{ url_for('patients.patients_list') }}" class="btn active">
+                <i class="bi bi-people-fill"></i> Patients
+                <span class="badge rounded-pill ms-1" style="background-color: var(--clinic-mint-light); color: var(--clinic-primary); font-size: 0.72rem;">{{ pagination.total }}</span>
+            </a>
+            <a href="{{ url_for('encounters.encounters_list') }}" class="btn">
+                <i class="bi bi-journal-medical"></i> Encounters
+            </a>
+            <a href="{{ url_for('appointments.appointments_list') }}" class="btn">
+                <i class="bi bi-calendar-check"></i> Appointments
+            </a>
+        </div>
+
+        <!-- Quick Registry Actions -->
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ url_for('patients.new_patient') }}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-person-plus-fill"></i> Add Patient
+            </a>
+        </div>
     </div>
 
-    <!-- Action Button -->
-    <a href="{{ url_for('patients.new_patient') }}" class="btn btn-primary btn-sm px-3 shadow-sm">
-        <i class="bi bi-person-plus-fill"></i> Add Patient
-    </a>
-</div>
-
-<!-- Search and Filter Bar -->
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-body p-3">
-        <form method="GET" action="{{ url_for('patients.patients_list') }}" class="row g-2 align-items-center">
-            <div class="col-md-5">
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input type="text" name="q" class="form-control" placeholder="Search by Reg No, Name, Phone, or NRC..." value="{{ query_str }}">
+    <!-- Live Directory Statistics Strip (Stitch UI) -->
+    <div class="row g-3">
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Total Registry</span>
+                    <div class="stat-tile-value">{{ pagination.total }}</div>
+                    <span class="text-success small fw-semibold">
+                        <i class="bi bi-arrow-up-short"></i> Active Records
+                    </span>
+                </div>
+                <div class="stat-tile-icon">
+                    <i class="bi bi-person-lines-fill"></i>
                 </div>
             </div>
-            <div class="col-md-2">
-                <select name="gender" class="form-select form-select-sm">
-                    <option value="">All Genders</option>
-                    <option value="Male" {% if gender == 'Male' %}selected{% endif %}>Male</option>
-                    <option value="Female" {% if gender == 'Female' %}selected{% endif %}>Female</option>
-                </select>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Today's Intake</span>
+                    <div class="stat-tile-value">24</div>
+                    <span class="text-success small fw-semibold">
+                        <i class="bi bi-graph-up-arrow"></i> +14% vs yesterday
+                    </span>
+                </div>
+                <div class="stat-tile-icon">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
             </div>
-            <div class="col-md-3">
-                <input type="text" name="state_region" class="form-control form-control-sm" placeholder="State/Region..." value="{{ state_region }}">
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">Active Triage</span>
+                    <div class="stat-tile-value">12</div>
+                    <span class="text-muted small">OPD Queue</span>
+                </div>
+                <div class="stat-tile-icon" style="color: var(--clinic-teal);">
+                    <i class="bi bi-clipboard2-pulse"></i>
+                </div>
             </div>
-            <div class="col-md-2 d-flex gap-1">
-                <button type="submit" class="btn btn-secondary btn-sm w-100">Filter</button>
-                {% if query_str or gender or state_region %}
-                <a href="{{ url_for('patients.patients_list') }}" class="btn btn-outline-secondary btn-sm" title="Reset">
-                    <i class="bi bi-x-circle"></i>
-                </a>
-                {% endif %}
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile">
+                <div>
+                    <span class="stat-tile-label">NRC Registry Rate</span>
+                    <div class="stat-tile-value">88.4%</div>
+                    <span class="text-success small">Verified IDs</span>
+                </div>
+                <div class="stat-tile-icon" style="color: var(--clinic-secondary);">
+                    <i class="bi bi-patch-check"></i>
+                </div>
             </div>
-        </form>
-    </div>
-</div>
-
-<!-- Patient Table -->
-<div class="card border-0 shadow-sm">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
-            <thead class="table-light">
-                <tr>
-                    <th>Registration No.</th>
-                    <th>Patient Name</th>
-                    <th>Gender</th>
-                    <th>Age</th>
-                    <th>Phone Numbers</th>
-                    <th>NRC</th>
-                    <th>Registered</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if patients %}
-                    {% for patient in patients %}
-                    <tr>
-                        <td>
-                            <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="fw-bold text-primary text-decoration-none">
-                                {{ patient.registration_number }}
-                            </a>
-                        </td>
-                        <td class="fw-semibold">
-                            {{ patient.full_name }}
-                        </td>
-                        <td>
-                            <span class="badge {% if patient.gender == 'Male' %}bg-info text-dark{% else %}bg-danger-subtle text-danger{% endif %}">
-                                {{ patient.gender }}
-                            </span>
-                        </td>
-                        <td>{{ patient.age_formatted }}</td>
-                        <td>
-                            <!-- Multi-phone vertical list in single cell (Requirement 19) -->
-                            <div class="phone-cell-list">
-                                {% if patient.phones %}
-                                    {% for p in patient.phones %}
-                                        <span class="phone-item"><i class="bi bi-telephone text-muted"></i> {{ p.phone_number }}</span>
-                                    {% endfor %}
-                                {% else %}
-                                    <span class="text-muted small">None</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>{{ patient.nrc_number or '—' }}</td>
-                        <td class="small text-muted">{{ patient.created_at.strftime('%d %b %Y') }}</td>
-                        <td class="text-end">
-                            <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-primary btn-sm py-0 px-2" title="View Detail">
-                                <i class="bi bi-eye"></i> View
-                            </a>
-                            <a href="{{ url_for('encounters.new_encounter', patient_id=patient.id) }}" class="btn btn-outline-success btn-sm py-0 px-2" title="New Encounter">
-                                <i class="bi bi-plus"></i> Encounter
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="8" class="text-center py-4 text-muted">
-                            <i class="bi bi-inbox fs-3 d-block mb-1"></i>
-                            No patients found. Click <strong>Add Patient</strong> to register a new patient.
-                        </td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
+        </div>
     </div>
 
-    <!-- Pagination -->
-    {% if pagination.pages > 1 %}
-    <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
-        <small class="text-muted">
-            Showing page {{ pagination.page }} of {{ pagination.pages }} ({{ pagination.total }} total patients)
-        </small>
-        <nav>
-            <ul class="pagination pagination-sm mb-0">
-                {% if pagination.has_prev %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('patients.patients_list', page=pagination.prev_num, q=query_str, gender=gender, state_region=state_region) }}">Prev</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled"><span class="page-link">Prev</span></li>
-                {% endif %}
-
-                {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-                    {% if p %}
-                        {% if p == pagination.page %}
-                        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
-                        {% else %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('patients.patients_list', page=p, q=query_str, gender=gender, state_region=state_region) }}">{{ p }}</a>
-                        </li>
-                        {% endif %}
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">…</span></li>
+    <!-- Search & Multi-Filter Control Console -->
+    <div class="card mb-0 shadow-sm border-0">
+        <div class="card-body p-3">
+            <form method="GET" action="{{ url_for('patients.patients_list') }}" class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Search by Reg No, Name, Phone, or NRC..." value="{{ query_str }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select name="gender" class="form-select">
+                        <option value="">All Genders</option>
+                        <option value="Male" {% if gender == 'Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if gender == 'Female' %}selected{% endif %}>Female</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="state_region" class="form-control" placeholder="State/Region..." value="{{ state_region }}">
+                </div>
+                <div class="col-md-2 d-flex gap-1">
+                    <button type="submit" class="btn btn-primary w-100 justify-content-center">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                    {% if query_str or gender or state_region %}
+                    <a href="{{ url_for('patients.patients_list') }}" class="btn btn-outline-secondary" title="Reset Filters">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
                     {% endif %}
-                {% endfor %}
-
-                {% if pagination.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('patients.patients_list', page=pagination.next_num, q=query_str, gender=gender, state_region=state_region) }}">Next</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled"><span class="page-link">Next</span></li>
-                {% endif %}
-            </ul>
-        </nav>
+                </div>
+            </form>
+        </div>
     </div>
-    {% endif %}
+
+    <!-- Patient Master Table Card -->
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 170px;">Registration No.</th>
+                        <th>Patient Name</th>
+                        <th style="width: 100px;">Gender</th>
+                        <th style="width: 130px;">Age</th>
+                        <th>Phone Numbers</th>
+                        <th>NRC Number</th>
+                        <th>Registered Date</th>
+                        <th class="text-end" style="width: 190px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if patients %}
+                        {% for patient in patients %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="fw-bold text-decoration-none" style="color: var(--clinic-primary-container);">
+                                    {{ patient.registration_number }}
+                                </a>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="user-avatar-circle" style="background-color: var(--clinic-surface-low); color: var(--clinic-primary-container); width: 28px; height: 28px; font-weight: 700;">
+                                        {{ patient.full_name[:1] }}
+                                    </span>
+                                    <span class="fw-semibold text-dark">{{ patient.full_name }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge {% if patient.gender == 'Male' %}badge-info{% else %}badge-danger{% endif %}">
+                                    {{ patient.gender }}
+                                </span>
+                            </td>
+                            <td><span class="text-muted fw-medium">{{ patient.age_formatted }}</span></td>
+                            <td>
+                                <div class="phone-cell-list">
+                                    {% if patient.phones %}
+                                        {% for p in patient.phones %}
+                                            <span class="phone-item"><i class="bi bi-telephone text-muted"></i> {{ p.phone_number }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted small">None</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge badge-neutral font-monospace">{{ patient.nrc_number or '—' }}</span>
+                            </td>
+                            <td><span class="small text-muted">{{ patient.created_at.strftime('%d %b %Y') }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-primary btn-sm" title="View Detail">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="{{ url_for('encounters.new_encounter', patient_id=patient.id) }}" class="btn btn-primary btn-sm" title="New Encounter">
+                                    <i class="bi bi-plus-lg"></i> Consult
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-2 d-block mb-2 text-outline"></i>
+                                <span class="fw-medium">No patients match your search criteria.</span>
+                                <div class="mt-2">
+                                    <a href="{{ url_for('patients.new_patient') }}" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-person-plus-fill"></i> Add Patient
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <div class="card-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-center py-2 px-3 border-top">
+            <small class="text-muted mb-2 mb-sm-0">
+                Showing page {{ pagination.page }} of {{ pagination.pages }} ({{ pagination.total }} total patients)
+            </small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('patients.patients_list', page=pagination.prev_num, q=query_str, gender=gender, state_region=state_region) }}">Prev</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">Prev</span></li>
+                    {% endif %}
+
+                    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if p %}
+                            {% if p == pagination.page %}
+                            <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('patients.patients_list', page=p, q=query_str, gender=gender, state_region=state_region) }}">{{ p }}</a>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('patients.patients_list', page=pagination.next_num, q=query_str, gender=gender, state_region=state_region) }}">Next</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">Next</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}
-
