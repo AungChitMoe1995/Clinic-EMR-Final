@@ -20,6 +20,7 @@ class Config:
     ITEMS_PER_PAGE = 15
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    SEND_FILE_MAX_AGE_DEFAULT = 43200  # 12 hours browser caching for static CSS/JS
     SQLALCHEMY_ENGINE_OPTIONS = {
         'connect_args': {'connect_timeout': 30},
         'pool_pre_ping': True,
