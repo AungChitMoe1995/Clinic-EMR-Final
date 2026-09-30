@@ -10,7 +10,12 @@
     <!-- Bootstrap Icons via Fast Global CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Custom clinic CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}?v=2.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}?v=2.3">
+
+    <!-- Hotwire Turbo Drive for Zero-Flicker SPA Navigations -->
+    <script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.12/dist/turbo.es2017-umd.js"></script>
+    <!-- Instant.page for Predictive Hover Pre-fetching -->
+    <script src="https://cdn.jsdelivr.net/npm/instant.page@5.2.0/instantpage.js" type="module"></script>
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -71,7 +76,7 @@
             </a>
             {% endif %}
 
-            <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout" data-turbo="false" data-no-instant>
                 <i class="bi bi-box-arrow-right"></i>
             </a>
         </div>

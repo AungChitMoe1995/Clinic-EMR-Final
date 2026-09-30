@@ -66,6 +66,44 @@ def get_current_user():
 
 
 # ==========================================
+# 1.1 IN-MEMORY QUERY CACHING (FAST SWITCHING)
+# ==========================================
+
+import time
+
+_CACHE = {}
+
+def get_cached(key, getter, ttl=60):
+    """Simple in-memory TTL cache to eliminate redundant network queries."""
+    now = time.time()
+    if key in _CACHE:
+        val, ts = _CACHE[key]
+        if now - ts < ttl:
+            return val
+    try:
+        val = getter()
+        _CACHE[key] = (val, now)
+        return val
+    except Exception:
+        if key in _CACHE:
+            return _CACHE[key][0]
+        raise
+
+def invalidate_cache(key=None):
+    if key:
+        _CACHE.pop(key, None)
+    else:
+        _CACHE.clear()
+
+def get_active_doctors():
+    return get_cached('active_doctors', lambda: Doctor.query.filter_by(is_active=True).all(), ttl=120)
+
+def get_active_inventory():
+    return get_cached('active_inventory', lambda: InventoryItem.query.filter_by(is_active=True).order_by(InventoryItem.item_name.asc()).all(), ttl=60)
+
+
+
+# ==========================================
 # 2. AUDIT LOGGING HELPER
 # ==========================================
 

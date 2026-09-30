@@ -691,3 +691,10 @@ a:hover {
     padding: 0.25rem 0;
 }
 
+/* Turbo Drive Sleek Top Progress Bar */
+.turbo-progress-bar {
+    height: 3px !important;
+    background-color: var(--clinic-mint) !important;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.7) !important;
+}
+

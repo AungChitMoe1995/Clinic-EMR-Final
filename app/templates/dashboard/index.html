@@ -297,11 +297,18 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+let volumeChartInstance = null;
+let revenueChartInstance = null;
+
+function initDashboardCharts() {
     // 1. Patient Volume Chart
     const ctxVolume = document.getElementById('patientVolumeChart');
     if (ctxVolume) {
-        new Chart(ctxVolume, {
+        if (volumeChartInstance) {
+            volumeChartInstance.destroy();
+            volumeChartInstance = null;
+        }
+        volumeChartInstance = new Chart(ctxVolume, {
             type: 'bar',
             data: {
                 labels: {{ chart_days|tojson }},
@@ -343,7 +350,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 2. Revenue Distribution Chart
     const ctxRev = document.getElementById('revenuePieChart');
     if (ctxRev) {
-        new Chart(ctxRev, {
+        if (revenueChartInstance) {
+            revenueChartInstance.destroy();
+            revenueChartInstance = null;
+        }
+        revenueChartInstance = new Chart(ctxRev, {
             type: 'doughnut',
             data: {
                 labels: ['Consultation', 'Pharmacy', 'Procedures'],
@@ -371,6 +382,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
+}
+
+document.addEventListener('DOMContentLoaded', initDashboardCharts);
+document.addEventListener('turbo:load', initDashboardCharts);
 </script>
 {% endblock %}

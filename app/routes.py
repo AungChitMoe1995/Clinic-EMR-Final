@@ -11,7 +11,8 @@ from app.models import (
 from app.helpers import (
     login_required, role_required, admin_required, get_current_user,
     AuditService, RegistrationNumberService, PatientService,
-    EncounterService, BillingService, InventoryService, AppointmentService
+    EncounterService, BillingService, InventoryService, AppointmentService,
+    get_active_doctors, get_active_inventory, invalidate_cache
 )
 
 # Initialize Blueprints (Preserves exact route naming conventions for templates & tests)
@@ -377,7 +378,7 @@ def encounters_list():
             pass
 
     pagination = q.order_by(Encounter.encounter_date.desc()).paginate(page=page, per_page=15, error_out=False)
-    doctors = Doctor.query.filter_by(is_active=True).all()
+    doctors = get_active_doctors()
 
     return render_template(
         'encounters/list.html',
@@ -437,7 +438,7 @@ def encounter_detail(encounter_id):
     encounter = Encounter.query.get_or_404(encounter_id)
     patient = encounter.patient
     current_user = get_current_user()
-    doctors = Doctor.query.filter_by(is_active=True).all()
+    doctors = get_active_doctors()
 
     if request.method == 'POST':
         action = request.form.get('action', 'save')
@@ -471,7 +472,7 @@ def encounter_detail(encounter_id):
         Encounter.status == 'completed'
     ).order_by(Encounter.encounter_date.desc()).limit(5).all()
 
-    inventory_items = InventoryItem.query.filter_by(is_active=True).order_by(InventoryItem.item_name.asc()).all()
+    inventory_items = get_active_inventory()
 
     return render_template(
         'encounters/detail.html',
@@ -557,7 +558,7 @@ def appointments_list():
         q = q.filter(Appointment.status == status)
 
     pagination = q.order_by(Appointment.appointment_date.asc(), Appointment.appointment_time.asc()).paginate(page=page, per_page=15, error_out=False)
-    doctors = Doctor.query.filter_by(is_active=True).all()
+    doctors = get_active_doctors()
 
     return render_template(
         'appointments/list.html',
@@ -577,7 +578,7 @@ def appointments_list():
 def new_appointment():
     patient_id = request.args.get('patient_id', type=int)
     selected_patient = db.session.get(Patient, patient_id) if patient_id else None
-    doctors = Doctor.query.filter_by(is_active=True).all()
+    doctors = get_active_doctors()
 
     if request.method == 'POST':
         pid = request.form.get('patient_id', type=int)
@@ -683,6 +684,7 @@ def new_doctor():
             )
             db.session.add(doc)
             db.session.commit()
+            invalidate_cache('active_doctors')
             AuditService.log('CREATE', 'Doctor', doc.id, f"Added doctor {doc.name}")
             flash(f"Doctor {doc.display_name} added successfully.", 'success')
             return redirect(url_for('doctors.doctors_list'))
@@ -716,6 +718,7 @@ def edit_doctor(doctor_id):
 
         try:
             db.session.commit()
+            invalidate_cache('active_doctors')
             AuditService.log('UPDATE', 'Doctor', doc.id, f"Updated doctor {doc.name}")
             flash('Doctor details updated successfully.', 'success')
             return redirect(url_for('doctors.doctors_list'))
@@ -831,6 +834,7 @@ def new_item():
                 db.session.add(txn)
 
             db.session.commit()
+            invalidate_cache('active_inventory')
             AuditService.log('CREATE', 'InventoryItem', item.id, f"Added inventory item {item.item_name} with stock {item.quantity}")
             flash(f"Item {item.item_name} registered successfully.", 'success')
             return redirect(url_for('inventory.inventory_list'))
@@ -873,6 +877,7 @@ def edit_item(item_id):
 
         try:
             db.session.commit()
+            invalidate_cache('active_inventory')
             AuditService.log('UPDATE', 'InventoryItem', item.id, f"Updated item {item.item_name}")
             flash('Item updated successfully.', 'success')
             return redirect(url_for('inventory.inventory_list'))
@@ -904,6 +909,7 @@ def stock_transaction(item_id):
             reference=reference,
             notes=notes
         )
+        invalidate_cache('active_inventory')
         AuditService.log('STOCK_TXN', 'InventoryItem', item_id, f"{transaction_type} {quantity} units (Balance: {txn.balance_after})")
         flash(f"Stock movement recorded. Current balance: {txn.balance_after}", 'success')
     except Exception as e:

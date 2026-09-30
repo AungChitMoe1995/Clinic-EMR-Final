@@ -2,13 +2,16 @@
  * Myanmar Clinic EMR - Core Interactive Frontend Utilities
  */
 
-document.addEventListener('DOMContentLoaded', function () {
+function initApp() {
     initDynamicAgeAndDOB();
     initSirNameGenderMapping();
     initPatientViewState();
     initDynamicFormRows();
     initSettingsPreview();
-});
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('turbo:load', initApp);
 
 /**
  * Bidirectional Calendar-Aware Dynamic Age <-> DOB Calculation
