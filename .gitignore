@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 instance/*.sqlite3
 instance/*.db
+database/*.sqlite3-shm
+database/*.sqlite3-wal
 .env
 .pytest_cache/
 .coverage

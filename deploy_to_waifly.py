@@ -26,7 +26,8 @@ SYNC_FILES = [
 
 SYNC_DIRS = [
     'app',
-    'migrations'
+    'migrations',
+    'database'
 ]
 
 # Remote run.py template for Waifly (runs on 0.0.0.0:25516 with multi-threading)
