@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Sign In — Myanmar Clinic EMR{% endblock %}
+{% block title %}Sign In — EASY EMR{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
@@ -10,8 +10,8 @@
                 <div class="clinic-brand-icon mx-auto mb-2" style="width: 44px; height: 44px; font-size: 1.4rem; background-color: rgba(255,255,255,0.18);">
                     <i class="bi bi-hospital"></i>
                 </div>
-                <h5 class="mb-1 fw-bold tracking-tight">MYANMAR CLINIC EMR</h5>
-                <small class="text-light opacity-75">One-Account Clinic Management</small>
+                <h5 class="mb-1 fw-bold tracking-tight">EASY EMR</h5>
+                <small class="text-light opacity-75">Smart Clinic Management System</small>
             </div>
             <div class="card-body p-4">
                 <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">

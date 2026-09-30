@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Voucher {{ voucher.voucher_number }} — Myanmar Clinic EMR{% endblock %}
+{% block title %}Voucher {{ voucher.voucher_number }} — EASY EMR{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -34,7 +34,7 @@
             <!-- Patient & Clinic Header for Voucher Receipt -->
             <div class="row mb-4 border-bottom pb-3">
                 <div class="col-6">
-                    <h6 class="fw-bold text-primary mb-1">MYANMAR CLINIC EMR</h6>
+                    <h6 class="fw-bold text-primary mb-1">EASY EMR</h6>
                     <small class="text-muted d-block">Outpatient Medical Services & Pharmacy</small>
                     <small class="text-muted d-block">Encounter #{{ encounter.id }} &bull; Dr: {{ encounter.doctor.display_name if encounter.doctor else 'General' }}</small>
                 </div>

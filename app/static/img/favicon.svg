@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="emrBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#004d36"/>
+      <stop offset="50%" stop-color="#006c49"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="crossGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f0fdf4"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#002b1e" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Modern App Icon Squircle Background -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#emrBg)"/>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="#34d399" stroke-width="1.2" stroke-opacity="0.4"/>
+
+  <!-- Iconic Clinical Medical Cross -->
+  <g filter="url(#softGlow)">
+    <!-- Vertical Cross Stem -->
+    <rect x="26" y="14" width="12" height="36" rx="5" fill="url(#crossGrad)"/>
+    <!-- Horizontal Cross Bar -->
+    <rect x="14" y="26" width="36" height="12" rx="5" fill="url(#crossGrad)"/>
+
+    <!-- Dynamic Vibrant ECG Heartbeat Wave Across Horizon (Emerald Mint) -->
+    <path d="M 12 32 L 23 32 L 27 21 L 33 43 L 37 27 L 41 32 L 52 32"
+          fill="none" stroke="#059669" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Subtle Vitality Accent Dot -->
+    <circle cx="48" cy="16" r="3" fill="#10b981"/>
+  </g>
+</svg>

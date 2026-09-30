@@ -1,5 +1,5 @@
 /**
- * Myanmar Clinic EMR - Core Interactive Frontend Utilities
+ * EASY EMR - Core Interactive Frontend Utilities
  */
 
 function initApp() {
