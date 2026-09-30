@@ -97,9 +97,12 @@
                     <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-person-lines-fill"></i> Profile
                     </a>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-                        <i class="bi bi-printer"></i> Print
-                    </button>
+                    <a href="{{ url_for('encounters.print_rx', encounter_id=encounter.id) }}" target="_blank" class="btn btn-outline-primary btn-sm shadow-sm" title="Print Prescription Slip">
+                        <i class="bi bi-prescription2"></i> Print Rx
+                    </a>
+                    <a href="{{ url_for('encounters.medical_certificate', encounter_id=encounter.id) }}" target="_blank" class="btn btn-outline-success btn-sm shadow-sm" title="Generate Medical Leave Certificate">
+                        <i class="bi bi-file-earmark-medical"></i> Medical Cert
+                    </a>
                     <button type="submit" name="action" value="save" class="btn btn-primary btn-sm shadow-sm">
                         <i class="bi bi-check2-circle"></i> Save Encounter
                     </button>

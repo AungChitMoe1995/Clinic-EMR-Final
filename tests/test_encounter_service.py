@@ -143,3 +143,39 @@ def test_prescription_independence(db, test_users):
 
     assert len(enc2.prescriptions) == 0
     assert len(enc1.prescriptions) == 1
+
+
+def test_print_rx_and_medical_certificate_routes(client, db, test_users):
+    from app.models import Patient, Encounter, Prescription, PrescriptionItem, EncounterDiagnosis
+    client.post('/login', data={'username': 'test_admin', 'password': 'admin123'}, follow_redirects=True)
+
+    pt = Patient(registration_number='REG-TEST-001', sir_name='Ko', patient_name='Min Min', gender='Male')
+    db.session.add(pt)
+    db.session.flush()
+
+    enc = Encounter(patient_id=pt.id, status='completed')
+    db.session.add(enc)
+    db.session.flush()
+
+    diag = EncounterDiagnosis(encounter_id=enc.id, diagnosis_text='Acute Bronchitis')
+    db.session.add(diag)
+
+    rx = Prescription(encounter_id=enc.id, patient_id=pt.id)
+    rx.items.append(PrescriptionItem(medicine_name='Azithromycin 500mg', dose='500mg', frequency='OD', duration='3 days', quantity=3))
+    db.session.add(rx)
+    db.session.commit()
+
+    # Test Print Rx Slip
+    rx_resp = client.get(f'/encounters/{enc.id}/print-rx')
+    assert rx_resp.status_code == 200
+    assert b'Print Prescription' in rx_resp.data
+    assert b'Azithromycin 500mg' in rx_resp.data
+    assert b'Min Min' in rx_resp.data
+
+    # Test Medical Certificate
+    cert_resp = client.get(f'/encounters/{enc.id}/medical-certificate?days=4')
+    assert cert_resp.status_code == 200
+    assert b'Medical Certificate' in cert_resp.data
+    assert b'Acute Bronchitis' in cert_resp.data
+    assert b'unfit to attend work' in cert_resp.data
+
