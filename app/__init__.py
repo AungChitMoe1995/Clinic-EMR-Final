@@ -26,19 +26,8 @@ def create_app(config_name=None):
     # Global template context processor with request-level caching
     @app.context_processor
     def inject_global_vars():
-        from flask import g
-        if hasattr(g, 'current_user'):
-            return dict(current_user=g.current_user)
-
-        user = None
-        if '_account_id' in session:
-            from app.models import Account
-            user = db.session.get(Account, session['_account_id'])
-        elif '_user_id' in session:
-            user = db.session.get(User, session['_user_id'])
-
-        g.current_user = user
-        return dict(current_user=user)
+        from app.helpers import get_current_user
+        return dict(current_user=get_current_user())
 
     # Register all consolidated Blueprints from routes.py
     for bp in all_blueprints:

@@ -9,7 +9,7 @@ from app.models import (
     RegistrationNumberSetting, SirNameSetting, PatientFieldSetting, SystemSetting, AuditLog
 )
 from app.helpers import (
-    login_required, role_required, admin_required,
+    login_required, role_required, admin_required, get_current_user,
     AuditService, RegistrationNumberService, PatientService,
     EncounterService, BillingService, InventoryService, AppointmentService
 )
@@ -402,7 +402,7 @@ def new_encounter():
         return redirect(url_for('patients.patients_list'))
 
     patient = Patient.query.get_or_404(patient_id)
-    current_user = db.session.get(User, session['_user_id'])
+    current_user = get_current_user()
     doc_id = EncounterService.resolve_doctor_for_user(current_user)
 
     encounter = Encounter(
@@ -436,7 +436,7 @@ def new_encounter():
 def encounter_detail(encounter_id):
     encounter = Encounter.query.get_or_404(encounter_id)
     patient = encounter.patient
-    current_user = db.session.get(User, session['_user_id'])
+    current_user = get_current_user()
     doctors = Doctor.query.filter_by(is_active=True).all()
 
     if request.method == 'POST':
@@ -587,7 +587,7 @@ def update_status(appointment_id):
 @appointments_bp.route('/appointments/<int:appointment_id>/start-encounter')
 @login_required
 def start_encounter_from_appointment(appointment_id):
-    current_user = db.session.get(User, session['_user_id'])
+    current_user = get_current_user()
     encounter = AppointmentService.convert_to_encounter(appointment_id, current_user)
     flash('Encounter started and linked to scheduled appointment.', 'success')
     return redirect(url_for('encounters.encounter_detail', encounter_id=encounter.id))
@@ -1011,7 +1011,7 @@ def index():
     start_of_today = datetime.combine(today, time.min)
     end_of_today = datetime.combine(today, time.max)
 
-    current_user = db.session.get(User, session['_user_id'])
+    current_user = get_current_user()
 
     today_registrations = Patient.query.filter(Patient.created_at >= start_of_today, Patient.created_at <= end_of_today).count()
     today_encounters = Encounter.query.filter(Encounter.encounter_date >= start_of_today, Encounter.encounter_date <= end_of_today, Encounter.status != 'draft').count()

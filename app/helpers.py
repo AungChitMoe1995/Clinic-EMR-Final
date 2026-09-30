@@ -43,6 +43,28 @@ def admin_required(f):
     return role_required()(f)
 
 
+def get_current_user():
+    """Returns the authenticated Account or User instance, caching on flask.g for matching session."""
+    from flask import g, session
+    sess_key = (session.get('_account_id'), session.get('_user_id'))
+    if not any(sess_key):
+        return None
+    if getattr(g, '_current_user_sess_key', None) == sess_key and getattr(g, 'current_user', None) is not None:
+        return g.current_user
+
+    user = None
+    if '_account_id' in session:
+        from app.models import Account
+        user = db.session.get(Account, session['_account_id'])
+    elif '_user_id' in session:
+        from app.models import User
+        user = db.session.get(User, session['_user_id'])
+
+    g._current_user_sess_key = sess_key
+    g.current_user = user
+    return user
+
+
 # ==========================================
 # 2. AUDIT LOGGING HELPER
 # ==========================================
@@ -54,7 +76,8 @@ class AuditService:
         try:
             username = session.get('username')
             if user_id is None:
-                user_id = session.get('_user_id') or session.get('_account_id')
+                # user_id foreign key references users.id (None for account sessions)
+                user_id = session.get('_user_id')
 
             log_entry = AuditLog(
                 user_id=user_id if isinstance(user_id, int) else None,
