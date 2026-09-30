@@ -471,6 +471,8 @@ def encounter_detail(encounter_id):
         Encounter.status == 'completed'
     ).order_by(Encounter.encounter_date.desc()).limit(5).all()
 
+    inventory_items = InventoryItem.query.filter_by(is_active=True).order_by(InventoryItem.item_name.asc()).all()
+
     return render_template(
         'encounters/detail.html',
         encounter=encounter,
@@ -478,6 +480,7 @@ def encounter_detail(encounter_id):
         current_user=current_user,
         doctors=doctors,
         previous_encounters=previous_encounters,
+        inventory_items=inventory_items,
         active_tab='patients',
         sub_view='encounters'
     )

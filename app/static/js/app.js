@@ -168,7 +168,7 @@ function initDynamicFormRows() {
             row.innerHTML = `
                 <div class="row g-2 mb-1">
                     <div class="col-md-5">
-                        <input type="text" name="medicine_name[]" class="form-control form-control-sm" placeholder="Medicine / Item name" required>
+                        <input type="text" name="medicine_name[]" list="inventory-meds" class="form-control form-control-sm" placeholder="Medicine / Item name" required>
                     </div>
                     <div class="col-md-2">
                         <input type="text" name="dose[]" class="form-control form-control-sm" placeholder="Dose (e.g. 500mg)">

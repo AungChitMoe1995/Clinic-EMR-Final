@@ -3,11 +3,19 @@
 {% block title %}Encounter #{{ encounter.id }} &mdash; {{ patient.full_name }} &mdash; Myanmar Clinic EMR{% endblock %}
 
 {% block content %}
+{% if inventory_items %}
+<datalist id="inventory-meds">
+    {% for item in inventory_items %}
+    <option value="{{ item.item_name }}{% if item.generic_name %} ({{ item.generic_name }}){% endif %} - In Stock: {{ item.quantity }} {{ item.unit or '' }}">
+    {% endfor %}
+</datalist>
+{% endif %}
+
 <form method="POST" action="{{ url_for('encounters.encounter_detail', encounter_id=encounter.id) }}" id="encounter-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <!-- Breadcrumb & Top Context Ribbon (Stitch Design) -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <!-- Breadcrumb & Status Context Ribbon -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <div class="d-flex align-items-center gap-1 small text-muted flex-wrap">
             <a href="{{ url_for('patients.patients_list') }}" class="text-decoration-none text-muted">
                 <i class="bi bi-people"></i> Patients
@@ -33,24 +41,24 @@
         </div>
     </div>
 
-    <!-- Encounter Master Header Card (Stitch Design) -->
-    <div class="patient-master-banner mb-3">
+    <!-- Encounter Compact Master Header Banner -->
+    <div class="patient-master-banner compact-banner mb-3">
         <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
-            <!-- Patient Identity & Demographics -->
-            <div class="d-flex align-items-start gap-3">
+            <!-- Patient Demographics Summary -->
+            <div class="d-flex align-items-center gap-3">
                 <div class="position-relative">
-                    <div class="patient-avatar-box">
+                    <div class="patient-avatar-box" style="width: 48px; height: 48px; font-size: 1.15rem;">
                         {{ patient.full_name[:2]|upper }}
                     </div>
                     <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1" title="Active Record"></span>
                 </div>
                 <div>
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <h4 class="fw-bold mb-0 text-dark">
+                        <h5 class="fw-bold mb-0 text-dark">
                             <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="text-decoration-none text-dark">
                                 {{ patient.full_name }}
                             </a>
-                        </h4>
+                        </h5>
                         <span class="badge badge-neutral font-monospace">{{ patient.registration_number }}</span>
                         <span class="badge {% if patient.gender == 'Male' %}badge-info{% else %}badge-danger{% endif %}">
                             {{ patient.gender }}
@@ -72,9 +80,9 @@
                 </div>
             </div>
 
-            <!-- Doctor Assignment & Primary Action Controls -->
+            <!-- Doctor Assignment & Direct Actions -->
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <div class="d-flex align-items-center gap-2 bg-light px-3 py-1 rounded-3">
+                <div class="d-flex align-items-center gap-2 bg-light px-2 py-1 rounded-3">
                     <label for="doctor_id" class="small fw-semibold text-muted mb-0 whitespace-nowrap">Doctor:</label>
                     {% if current_user.is_doctor() %}
                         <span class="badge badge-completed fw-semibold">
@@ -82,7 +90,7 @@
                         </span>
                         <input type="hidden" name="doctor_id" value="{{ current_user.doctor_profile.id if current_user.doctor_profile else '' }}">
                     {% else %}
-                        <select name="doctor_id" id="doctor_id" class="form-select form-select-sm" style="min-width: 200px;">
+                        <select name="doctor_id" id="doctor_id" class="form-select form-select-sm" style="min-width: 180px;">
                             <option value="">-- Unassigned Doctor --</option>
                             {% for doc in doctors %}
                                 <option value="{{ doc.id }}" {% if encounter.doctor_id == doc.id %}selected{% endif %}>
@@ -94,7 +102,7 @@
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
-                    <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
+                    <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm" title="View Patient Profile">
                         <i class="bi bi-person-lines-fill"></i> Profile
                     </a>
                     <a href="{{ url_for('encounters.print_rx', encounter_id=encounter.id) }}" target="_blank" class="btn btn-outline-primary btn-sm shadow-sm" title="Print Prescription Slip">
@@ -113,8 +121,8 @@
             </div>
         </div>
 
-        <!-- Rapid Status Flag Bar -->
-        <div class="mt-3 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center gap-3 small text-muted">
+        <!-- Rapid Context Flags Ribbon -->
+        <div class="mt-2 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center gap-2 small text-muted">
             <div class="d-flex align-items-center gap-3 flex-wrap">
                 <span><i class="bi bi-hospital text-primary"></i> Type: <strong class="text-dark">Outpatient Consultation (OPD)</strong></span>
                 <span><i class="bi bi-geo-alt text-primary"></i> Location: <strong class="text-dark">Central Consultation Suite</strong></span>
@@ -133,192 +141,250 @@
         </div>
     </div>
 
-    <!-- Unified Desktop 2-Column Layout (Dominant 65% : Supporting 35%) -->
-    <div class="encounter-desktop-layout">
+    <!-- ============================================================ -->
+    <!-- COMPACT TWO-COLUMN CLINICAL WORKSPACE                         -->
+    <!-- Left: Clinical Consultation & Assessment                     -->
+    <!-- Right: Vitals, Prescriptions, Labs & Orders                  -->
+    <!-- ============================================================ -->
+    <div class="row g-3">
 
         <!-- ============================================================ -->
-        <!-- BIG LEFT CLINICAL AREA (DOMINANT CLINICAL WORKSPACE: 65%) -->
+        <!-- LEFT COLUMN: CLINICAL ASSESSMENT & FINDINGS (col-lg-6)        -->
         <!-- ============================================================ -->
-        <div class="clinical-dominant-area">
+        <div class="col-12 col-lg-6">
 
-            <!-- 1. HOPI (History of Present Illness) -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-chat-left-quote text-primary"></i> 1. History of Present Illness (HOPI)
+            <!-- 1. History of Present Illness (HOPI) -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <span class="clinical-card-title">
+                        <i class="bi bi-chat-left-quote-fill text-primary"></i> 1. History of Present Illness (HOPI)
                     </span>
-                    <span class="badge badge-neutral">Encounter Snapshot</span>
+                    <span class="badge badge-neutral small">Subjective</span>
                 </div>
-                <div class="card-body p-3">
-                    <textarea name="hopi" id="hopi" rows="4" class="form-control"
-                              placeholder="Chief complaint, onset, duration, progression, aggravating/relieving factors, symptoms...">{{ encounter.hopi or '' }}</textarea>
+                <div class="clinical-card-body">
+                    <textarea name="hopi" id="hopi" rows="3" class="form-control form-control-sm compact-textarea"
+                              placeholder="Chief complaint, onset, duration, symptoms, aggravating/relieving factors...">{{ encounter.hopi or '' }}</textarea>
                 </div>
             </div>
 
-            <!-- 2. EXAMINATION -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-heart-pulse text-primary"></i> 2. Clinical Examination
+            <!-- 2. Clinical Examination (Objective) -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <span class="clinical-card-title">
+                        <i class="bi bi-heart-pulse-fill text-primary"></i> 2. Clinical Examination
                     </span>
-                    <span class="badge badge-neutral">Objective Findings</span>
+                    <span class="badge badge-neutral small">Objective</span>
                 </div>
-                <div class="card-body p-3">
-                    <textarea name="examination" id="examination" rows="5" class="form-control"
-                              placeholder="General appearance, physical examination findings (CVS, RS, PA, CNS, etc.)...">{{ encounter.examination or '' }}</textarea>
+                <div class="clinical-card-body">
+                    <textarea name="examination" id="examination" rows="3" class="form-control form-control-sm compact-textarea"
+                              placeholder="General appearance, systemic examination findings (CVS, RS, PA, CNS, ENT, etc.)...">{{ encounter.examination or '' }}</textarea>
                 </div>
             </div>
 
-            <!-- 3. DIAGNOSES -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-diagram-3 text-primary"></i> 3. Diagnoses
+            <!-- 3. Diagnoses -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <span class="clinical-card-title">
+                        <i class="bi bi-diagram-3-fill text-primary"></i> 3. Diagnoses
                     </span>
-                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-diagnosis">
+                    <button type="button" class="btn btn-primary btn-sm py-1 px-2" id="btn-add-diagnosis">
                         <i class="bi bi-plus-lg"></i> Add Diagnosis
                     </button>
                 </div>
-                <div class="card-body p-3">
+                <div class="clinical-card-body">
                     <div id="diagnoses-container">
                         {% if encounter.diagnoses %}
                             {% for diag in encounter.diagnoses %}
                             <div class="diagnosis-row d-flex gap-2 mb-2 align-items-center">
-                                <input type="text" name="diagnosis_text[]" class="form-control"
+                                <input type="text" name="diagnosis_text[]" class="form-control form-control-sm"
                                        value="{{ diag.diagnosis_text }}" placeholder="Diagnosis (e.g. Acute Bronchitis)" required>
-                                <select name="diagnosis_category[]" class="form-select" style="width: 140px;">
+                                <select name="diagnosis_category[]" class="form-select form-select-sm" style="width: 125px;">
                                     <option value="Primary" {% if diag.category == 'Primary' %}selected{% endif %}>Primary</option>
                                     <option value="Secondary" {% if diag.category == 'Secondary' %}selected{% endif %}>Secondary</option>
                                     <option value="Provisional" {% if diag.category == 'Provisional' %}selected{% endif %}>Provisional</option>
                                     <option value="Confirmed" {% if diag.category == 'Confirmed' %}selected{% endif %}>Confirmed</option>
                                 </select>
-                                <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn" title="Remove">&times;</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn py-0 px-2" title="Remove">&times;</button>
                             </div>
                             {% endfor %}
                         {% else %}
                             <div class="diagnosis-row d-flex gap-2 mb-2 align-items-center">
-                                <input type="text" name="diagnosis_text[]" class="form-control" placeholder="Diagnosis (e.g. Acute Bronchitis)">
-                                <select name="diagnosis_category[]" class="form-select" style="width: 140px;">
+                                <input type="text" name="diagnosis_text[]" class="form-control form-control-sm" placeholder="Diagnosis (e.g. Acute Bronchitis)">
+                                <select name="diagnosis_category[]" class="form-select form-select-sm" style="width: 125px;">
                                     <option value="Primary" selected>Primary</option>
                                     <option value="Secondary">Secondary</option>
                                     <option value="Provisional">Provisional</option>
                                     <option value="Confirmed">Confirmed</option>
                                 </select>
-                                <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn" title="Remove">&times;</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn py-0 px-2" title="Remove">&times;</button>
                             </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- 4. PAST HISTORY (INDEPENDENT SNAPSHOT) -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-muted d-flex align-items-center gap-2">
-                        <i class="bi bi-clock-history"></i> 4. Past History (Independent Snapshot)
-                    </span>
-                    <span class="badge badge-neutral">Auto-populated Snapshot</span>
+            <!-- 4. Past Medical History (Collapsible Accordion Card) -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="clinical-card-title">
+                            <i class="bi bi-clock-history text-secondary"></i> 4. Past History
+                        </span>
+                        {% if encounter.history and encounter.history.allergy_history %}
+                        <span class="badge badge-danger small">
+                            <i class="bi bi-exclamation-triangle"></i> Allergy: {{ encounter.history.allergy_history[:25] }}...
+                        </span>
+                        {% endif %}
+                    </div>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 text-muted" data-bs-toggle="collapse" data-bs-target="#pastHistoryCollapse" aria-expanded="true">
+                        <i class="bi bi-chevron-expand"></i> Toggle
+                    </button>
                 </div>
-                <div class="card-body p-3">
-                    <div class="row g-2">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Past Medical History (PMH):</label>
-                            <textarea name="pmh" rows="2" class="form-control" placeholder="Hypertension, Diabetes, Asthma...">{{ encounter.history.pmh if encounter.history else '' }}</textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Past Surgical History (PSH):</label>
-                            <textarea name="psh" rows="2" class="form-control" placeholder="Appendectomy, Cholecystectomy...">{{ encounter.history.psh if encounter.history else '' }}</textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Drug History (Current Medications):</label>
-                            <textarea name="drug_history" rows="2" class="form-control" placeholder="Amlodipine 5mg daily...">{{ encounter.history.drug_history if encounter.history else '' }}</textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Allergy History:</label>
-                            <textarea name="allergy_history" rows="2" class="form-control" placeholder="Penicillin, NSAIDs, seafood...">{{ encounter.history.allergy_history if encounter.history else '' }}</textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Family History:</label>
-                            <textarea name="family_history" rows="2" class="form-control" placeholder="Family history of CAD, DM, cancer...">{{ encounter.history.family_history if encounter.history else '' }}</textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Social History:</label>
-                            <textarea name="social_history" rows="2" class="form-control" placeholder="Smoking, Alcohol, Betel quid, Diet...">{{ encounter.history.social_history if encounter.history else '' }}</textarea>
+                <div class="collapse show" id="pastHistoryCollapse">
+                    <div class="clinical-card-body">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-muted mb-1">Past Medical (PMH):</label>
+                                <textarea name="pmh" rows="2" class="form-control form-control-sm" placeholder="Hypertension, DM...">{{ encounter.history.pmh if encounter.history else '' }}</textarea>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-muted mb-1">Past Surgical (PSH):</label>
+                                <textarea name="psh" rows="2" class="form-control form-control-sm" placeholder="Appendectomy...">{{ encounter.history.psh if encounter.history else '' }}</textarea>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-muted mb-1">Current Drugs:</label>
+                                <textarea name="drug_history" rows="2" class="form-control form-control-sm" placeholder="Amlodipine 5mg...">{{ encounter.history.drug_history if encounter.history else '' }}</textarea>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-danger mb-1"><i class="bi bi-exclamation-circle"></i> Allergies:</label>
+                                <textarea name="allergy_history" rows="2" class="form-control form-control-sm border-warning" placeholder="Penicillin, NSAIDs, seafood...">{{ encounter.history.allergy_history if encounter.history else '' }}</textarea>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-muted mb-1">Family History:</label>
+                                <textarea name="family_history" rows="2" class="form-control form-control-sm" placeholder="CAD, DM, cancer...">{{ encounter.history.family_history if encounter.history else '' }}</textarea>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-muted mb-1">Social History:</label>
+                                <textarea name="social_history" rows="2" class="form-control form-control-sm" placeholder="Smoking, Alcohol, Betel quid...">{{ encounter.history.social_history if encounter.history else '' }}</textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Previous Encounters Quick View (if available) -->
+            {% if previous_encounters %}
+            <div class="clinical-card">
+                <div class="clinical-card-header py-1 px-3">
+                    <span class="clinical-card-title small text-muted">
+                        <i class="bi bi-clock-history"></i> Previous Clinic Visits ({{ previous_encounters|length }})
+                    </span>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 text-muted" data-bs-toggle="collapse" data-bs-target="#prevVisitsCollapse">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="collapse" id="prevVisitsCollapse">
+                    <div class="clinical-card-body p-2">
+                        <div class="list-group list-group-flush small">
+                            {% for prev in previous_encounters %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center px-1 py-1">
+                                <div>
+                                    <span class="fw-semibold text-dark">{{ prev.encounter_date.strftime('%d %b %Y') }}</span>
+                                    <span class="text-muted ms-2">Dr. {{ prev.doctor.name if prev.doctor else 'General' }}</span>
+                                </div>
+                                <a href="{{ url_for('encounters.encounter_detail', encounter_id=prev.id) }}" target="_blank" class="btn btn-link btn-sm py-0 text-primary">
+                                    View <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
         </div>
 
         <!-- ============================================================ -->
-        <!-- RIGHT SUPPORTING SIDEBAR (35%) -->
+        <!-- RIGHT COLUMN: TRIAGE, PRESCRIPTIONS & ORDERS (col-lg-6)       -->
         <!-- ============================================================ -->
-        <div class="supporting-sidebar-area">
+        <div class="col-12 col-lg-6">
 
-            <!-- VITALS -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-activity text-primary"></i> Vitals
+            <!-- 1. Vitals & Triage (Compact 3x2 Grid) -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <span class="clinical-card-title">
+                        <i class="bi bi-activity text-primary"></i> Vitals & Triage
                     </span>
-                    <span class="badge badge-neutral">Triage</span>
+                    <span class="badge badge-neutral small">Baseline Metrics</span>
                 </div>
-                <div class="card-body p-3">
+                <div class="clinical-card-body">
                     {% set v = encounter.latest_vitals %}
                     <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1">Blood Pressure</label>
-                            <div class="input-group input-group-sm">
-                                <input type="number" name="bp_systolic" class="form-control" placeholder="Sys" value="{{ v.bp_systolic if v else '' }}">
-                                <span class="input-group-text">/</span>
-                                <input type="number" name="bp_diastolic" class="form-control" placeholder="Dia" value="{{ v.bp_diastolic if v else '' }}">
+                        <div class="col-4">
+                            <div class="vital-box">
+                                <span class="vital-box-label"><i class="bi bi-heart-pulse"></i> BP (mmHg)</span>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" name="bp_systolic" class="form-control form-control-sm px-1 text-center" placeholder="Sys" value="{{ v.bp_systolic if v else '' }}">
+                                    <span class="input-group-text px-1">/</span>
+                                    <input type="number" name="bp_diastolic" class="form-control form-control-sm px-1 text-center" placeholder="Dia" value="{{ v.bp_diastolic if v else '' }}">
+                                </div>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1">Pulse (bpm)</label>
-                            <input type="number" name="pulse" class="form-control form-control-sm" placeholder="Pulse" value="{{ v.pulse if v else '' }}">
+                        <div class="col-4">
+                            <div class="vital-box">
+                                <span class="vital-box-label"><i class="bi bi-speedometer2"></i> Pulse (bpm)</span>
+                                <input type="number" name="pulse" class="form-control form-control-sm text-center" placeholder="72" value="{{ v.pulse if v else '' }}">
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1">Temp (&deg;F)</label>
-                            <input type="number" step="0.1" name="temperature" class="form-control form-control-sm" placeholder="98.6" value="{{ v.temperature if v else '' }}">
+                        <div class="col-4">
+                            <div class="vital-box">
+                                <span class="vital-box-label"><i class="bi bi-thermometer-half"></i> Temp (&deg;F)</span>
+                                <input type="number" step="0.1" name="temperature" class="form-control form-control-sm text-center" placeholder="98.6" value="{{ v.temperature if v else '' }}">
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1">SpO2 (%)</label>
-                            <input type="number" name="spo2" class="form-control form-control-sm" placeholder="98" value="{{ v.spo2 if v else '' }}">
+                        <div class="col-4">
+                            <div class="vital-box">
+                                <span class="vital-box-label"><i class="bi bi-lungs"></i> SpO2 (%)</span>
+                                <input type="number" name="spo2" class="form-control form-control-sm text-center" placeholder="99" value="{{ v.spo2 if v else '' }}">
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1">Resp. Rate (/min)</label>
-                            <input type="number" name="respiratory_rate" class="form-control form-control-sm" placeholder="18" value="{{ v.respiratory_rate if v else '' }}">
+                        <div class="col-4">
+                            <div class="vital-box">
+                                <span class="vital-box-label"><i class="bi bi-wind"></i> Resp (/min)</span>
+                                <input type="number" name="respiratory_rate" class="form-control form-control-sm text-center" placeholder="18" value="{{ v.respiratory_rate if v else '' }}">
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-semibold mb-1">Weight (kg)</label>
-                            <input type="number" step="0.1" name="weight" class="form-control form-control-sm" placeholder="60.5" value="{{ v.weight if v else '' }}">
+                        <div class="col-4">
+                            <div class="vital-box">
+                                <span class="vital-box-label"><i class="bi bi-person"></i> Weight (kg)</span>
+                                <input type="number" step="0.1" name="weight" class="form-control form-control-sm text-center" placeholder="60.0" value="{{ v.weight if v else '' }}">
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- PRESCRIPTION -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-capsule text-primary"></i> Prescription
+            <!-- 2. Prescription (Medication Orders) -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <span class="clinical-card-title">
+                        <i class="bi bi-capsule text-primary"></i> Prescription (Rx)
                     </span>
-                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-medicine">
-                        <i class="bi bi-plus-lg"></i> Add
+                    <button type="button" class="btn btn-primary btn-sm py-1 px-2" id="btn-add-medicine">
+                        <i class="bi bi-plus-lg"></i> Add Medicine
                     </button>
                 </div>
-                <div class="card-body p-3">
-                    <small class="text-muted d-block mb-2">Prescribed for this encounter only.</small>
+                <div class="clinical-card-body">
+                    <small class="text-muted d-block mb-2">Prescribed medications for this outpatient encounter:</small>
                     <div id="medicines-container">
                         {% if encounter.prescriptions and encounter.prescriptions[0].items %}
                             {% for item in encounter.prescriptions[0].items %}
-                            <div class="medicine-row border rounded-3 p-2 mb-2 bg-light">
+                            <div class="medicine-row">
                                 <div class="row g-2 mb-1">
                                     <div class="col-md-5">
-                                        <input type="text" name="medicine_name[]" class="form-control form-control-sm"
-                                               value="{{ item.medicine_name }}" placeholder="Medicine name" required>
+                                        <input type="text" name="medicine_name[]" list="inventory-meds" class="form-control form-control-sm"
+                                               value="{{ item.medicine_name }}" placeholder="Medicine / Item name" required>
                                     </div>
                                     <div class="col-md-2">
                                         <input type="text" name="dose[]" class="form-control form-control-sm"
@@ -330,14 +396,14 @@
                                     </div>
                                     <div class="col-md-3 d-flex gap-1">
                                         <input type="text" name="frequency[]" class="form-control form-control-sm"
-                                               value="{{ item.frequency or '' }}" placeholder="Freq">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn">&times;</button>
+                                               value="{{ item.frequency or '' }}" placeholder="Freq (e.g. TDS)">
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn py-0 px-2">&times;</button>
                                     </div>
                                 </div>
                                 <div class="row g-2">
                                     <div class="col-md-3">
                                         <input type="text" name="duration[]" class="form-control form-control-sm"
-                                               value="{{ item.duration or '' }}" placeholder="Duration">
+                                               value="{{ item.duration or '' }}" placeholder="Duration (5 days)">
                                     </div>
                                     <div class="col-md-3">
                                         <input type="number" step="any" name="quantity[]" class="form-control form-control-sm"
@@ -345,7 +411,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <input type="text" name="instructions[]" class="form-control form-control-sm"
-                                               value="{{ item.instructions or '' }}" placeholder="Instructions">
+                                               value="{{ item.instructions or '' }}" placeholder="Instructions (e.g. After meals)">
                                     </div>
                                 </div>
                             </div>
@@ -355,31 +421,31 @@
                 </div>
             </div>
 
-            <!-- INVESTIGATIONS -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-clipboard2-pulse text-primary"></i> Investigations
+            <!-- 3. Investigations (Labs & Imaging) -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <span class="clinical-card-title">
+                        <i class="bi bi-clipboard2-pulse-fill text-primary"></i> Investigations
                     </span>
-                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-investigation">
-                        <i class="bi bi-plus-lg"></i> Add
+                    <button type="button" class="btn btn-primary btn-sm py-1 px-2" id="btn-add-investigation">
+                        <i class="bi bi-plus-lg"></i> Add Test
                     </button>
                 </div>
-                <div class="card-body p-3">
+                <div class="clinical-card-body">
                     <div id="investigations-container">
                         {% if encounter.investigations_rel %}
                             {% for inv in encounter.investigations_rel %}
                             <div class="investigation-row d-flex gap-2 mb-2 align-items-center">
                                 <input type="text" name="investigation_name[]" class="form-control form-control-sm"
                                        value="{{ inv.investigation_name }}" placeholder="Investigation name" required>
-                                <select name="investigation_status[]" class="form-select form-select-sm" style="width: 130px;">
+                                <select name="investigation_status[]" class="form-select form-select-sm" style="width: 120px;">
                                     <option value="Ordered" {% if inv.status == 'Ordered' %}selected{% endif %}>Ordered</option>
                                     <option value="Pending" {% if inv.status == 'Pending' %}selected{% endif %}>Pending</option>
                                     <option value="Completed" {% if inv.status == 'Completed' %}selected{% endif %}>Completed</option>
                                 </select>
                                 <input type="text" name="investigation_result[]" class="form-control form-control-sm"
-                                       value="{{ inv.result or '' }}" placeholder="Result">
-                                <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn">&times;</button>
+                                       value="{{ inv.result or '' }}" placeholder="Result summary">
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn py-0 px-2" title="Remove">&times;</button>
                             </div>
                             {% endfor %}
                         {% endif %}
@@ -387,31 +453,31 @@
                 </div>
             </div>
 
-            <!-- PROCEDURES -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-bandaid text-primary"></i> Procedures
+            <!-- 4. Procedures -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <span class="clinical-card-title">
+                        <i class="bi bi-bandaid-fill text-primary"></i> Procedures
                     </span>
-                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-procedure">
-                        <i class="bi bi-plus-lg"></i> Add
+                    <button type="button" class="btn btn-primary btn-sm py-1 px-2" id="btn-add-procedure">
+                        <i class="bi bi-plus-lg"></i> Add Procedure
                     </button>
                 </div>
-                <div class="card-body p-3">
+                <div class="clinical-card-body">
                     <div id="procedures-container">
                         {% if encounter.procedures %}
                             {% for proc in encounter.procedures %}
                             <div class="procedure-row d-flex gap-2 mb-2 align-items-center">
                                 <input type="text" name="procedure_name[]" class="form-control form-control-sm"
                                        value="{{ proc.procedure_name }}" placeholder="Procedure name" required>
-                                <select name="procedure_status[]" class="form-select form-select-sm" style="width: 130px;">
+                                <select name="procedure_status[]" class="form-select form-select-sm" style="width: 120px;">
                                     <option value="Completed" {% if proc.status == 'Completed' %}selected{% endif %}>Completed</option>
                                     <option value="In Progress" {% if proc.status == 'In Progress' %}selected{% endif %}>In Progress</option>
                                     <option value="Scheduled" {% if proc.status == 'Scheduled' %}selected{% endif %}>Scheduled</option>
                                 </select>
                                 <input type="text" name="procedure_notes[]" class="form-control form-control-sm"
                                        value="{{ proc.notes or '' }}" placeholder="Notes">
-                                <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn">&times;</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn py-0 px-2" title="Remove">&times;</button>
                             </div>
                             {% endfor %}
                         {% endif %}
@@ -419,24 +485,24 @@
                 </div>
             </div>
 
-            <!-- BILLING / VOUCHER -->
-            <div class="card mb-3 shadow-sm border-0">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-dark d-flex align-items-center gap-2">
+            <!-- 5. Billing / Voucher -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <span class="clinical-card-title">
                         <i class="bi bi-receipt text-primary"></i> Billing & Voucher
                     </span>
                     {% if encounter.status != 'draft' %}
-                    <a href="{{ url_for('billing.new_voucher', encounter_id=encounter.id) }}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-plus-lg"></i> Add
+                    <a href="{{ url_for('billing.new_voucher', encounter_id=encounter.id) }}" class="btn btn-primary btn-sm py-1 px-2">
+                        <i class="bi bi-plus-lg"></i> New Voucher
                     </a>
                     {% endif %}
                 </div>
-                <div class="card-body p-3">
+                <div class="clinical-card-body">
                     {% set vouchers = encounter.vouchers.all() %}
                     {% if vouchers %}
                         <ul class="list-group list-group-flush small">
                             {% for v in vouchers %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center px-1 py-2">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-1 py-1">
                                 <div>
                                     <a href="{{ url_for('billing.voucher_detail', voucher_id=v.id) }}" class="fw-bold text-decoration-none" style="color: var(--clinic-primary-container);">
                                         {{ v.voucher_number }}
@@ -459,16 +525,16 @@
 
     </div>
 
-    <!-- Bottom Actions Bar -->
-    <div class="patient-master-banner mt-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
-        <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary">
+    <!-- Bottom Actions Sticky Ribbon -->
+    <div class="patient-master-banner compact-banner mt-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+        <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left"></i> Return to Patient Profile
         </a>
         <div class="d-flex align-items-center gap-2">
-            <button type="submit" name="action" value="cancel" class="btn btn-outline-danger" formnovalidate onclick="return confirm('Discard any uncommitted changes?');">
+            <button type="submit" name="action" value="cancel" class="btn btn-outline-danger btn-sm" formnovalidate onclick="return confirm('Discard any uncommitted changes?');">
                 <i class="bi bi-x-circle"></i> Cancel
             </button>
-            <button type="submit" name="action" value="save" class="btn btn-primary shadow-sm">
+            <button type="submit" name="action" value="save" class="btn btn-primary btn-sm shadow-sm px-3">
                 <i class="bi bi-check2-circle"></i> Save Clinical Encounter
             </button>
         </div>
