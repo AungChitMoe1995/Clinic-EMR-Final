@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescription — {{ patient.full_name }} ({{ patient.registration_number }})</title>
+
+    <!-- Bootstrap 5 CSS via CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            background-color: #f3f4f6;
+            color: #1e293b;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 0.92rem;
+        }
+
+        .rx-page {
+            max-width: 800px;
+            margin: 24px auto;
+            background: #ffffff;
+            padding: 40px 48px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .clinic-header {
+            border-bottom: 2px solid #005d42;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        .clinic-title {
+            color: #005d42;
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .doctor-title {
+            color: #047857;
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .rx-symbol {
+            font-family: "Times New Roman", Times, serif;
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #005d42;
+            line-height: 1;
+        }
+
+        .patient-info-box {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 18px;
+            margin-bottom: 20px;
+        }
+
+        .vitals-pill {
+            display: inline-block;
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .table-rx {
+            width: 100%;
+            margin-top: 10px;
+            margin-bottom: 24px;
+        }
+
+        .table-rx th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 8px 12px;
+            border-bottom: 2px solid #cbd5e1;
+        }
+
+        .table-rx td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+
+        .doctor-sign-block {
+            margin-top: 48px;
+            padding-top: 20px;
+        }
+
+        .sign-line {
+            border-top: 1px dashed #94a3b8;
+            width: 200px;
+            margin-top: 50px;
+        }
+
+        .stamp-box {
+            width: 130px;
+            height: 90px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .rx-page {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 15px 25px !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top floating action bar (Hidden on print) -->
+    <div class="no-print bg-white border-bottom shadow-sm py-2 px-4 sticky-top d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-success"><i class="bi bi-printer"></i> Printable Prescription</span>
+            <span class="text-muted small">Ready for A4 / A5 printing</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button onclick="window.print()" class="btn btn-primary btn-sm px-3 shadow-sm">
+                <i class="bi bi-printer-fill me-1"></i> Print Prescription
+            </button>
+            <button onclick="window.close()" class="btn btn-outline-secondary btn-sm px-3">
+                <i class="bi bi-x-circle me-1"></i> Close
+            </button>
+        </div>
+    </div>
+
+    <div class="rx-page">
+        <!-- Clinic Letterhead -->
+        <div class="clinic-header d-flex justify-content-between align-items-start">
+            <div>
+                <div class="clinic-title">{{ current_user.clinic_name if current_user.clinic_name else 'Central Clinic' }}</div>
+                <div class="text-muted small">Outpatient Department &bull; General & Specialized Medical Care</div>
+                <div class="text-muted small"><i class="bi bi-geo-alt"></i> Yangon, Myanmar &bull; <i class="bi bi-telephone"></i> {{ current_user.phone_number or '09123456789' }}</div>
+            </div>
+            <div class="text-end">
+                <div class="doctor-title">{{ encounter.doctor.display_name if encounter.doctor else (current_user.doctor_name or 'Dr. Aung Kyaw') }}</div>
+                <div class="text-muted small">{{ encounter.doctor.specialty if encounter.doctor and encounter.doctor.specialty else 'General Practitioner' }}</div>
+                <div class="text-muted small font-monospace">Date: {{ encounter.encounter_date.strftime('%d %b %Y') }}</div>
+            </div>
+        </div>
+
+        <!-- Patient Demographics & Vitals -->
+        <div class="patient-info-box">
+            <div class="row g-2 align-items-center">
+                <div class="col-sm-6">
+                    <span class="text-muted small">Patient Name:</span>
+                    <span class="fw-bold text-dark ms-1">{{ patient.full_name }}</span>
+                    <span class="text-muted ms-2">({{ patient.gender }}, {{ patient.age_formatted }})</span>
+                </div>
+                <div class="col-sm-6 text-sm-end">
+                    <span class="text-muted small">Reg. No:</span>
+                    <span class="font-monospace fw-bold ms-1" style="color: #005d42;">{{ patient.registration_number }}</span>
+                </div>
+            </div>
+
+            <!-- Vitals Summary if available -->
+            {% if vitals %}
+            <div class="pt-2 mt-2 border-top d-flex flex-wrap align-items-center gap-1">
+                <span class="text-muted small me-2">Vitals:</span>
+                {% if vitals.bp_systolic and vitals.bp_diastolic %}
+                    <span class="vitals-pill">BP: {{ vitals.bp_systolic }}/{{ vitals.bp_diastolic }} mmHg</span>
+                {% endif %}
+                {% if vitals.pulse %}
+                    <span class="vitals-pill">PR: {{ vitals.pulse }} bpm</span>
+                {% endif %}
+                {% if vitals.temperature %}
+                    <span class="vitals-pill">Temp: {{ vitals.temperature }} °F</span>
+                {% endif %}
+                {% if vitals.weight %}
+                    <span class="vitals-pill">Wt: {{ vitals.weight }} kg</span>
+                {% endif %}
+                {% if vitals.spo2 %}
+                    <span class="vitals-pill">SpO2: {{ vitals.spo2 }}%</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Diagnoses -->
+            {% if encounter.diagnoses %}
+            <div class="pt-2 mt-2 border-top">
+                <span class="text-muted small me-1">Diagnosis:</span>
+                {% for d in encounter.diagnoses %}
+                    <span class="fw-semibold text-dark">{{ d.diagnosis_text }}{% if not loop.last %}, {% endif %}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Prescription Body -->
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+            <span class="rx-symbol">℞</span>
+            <span class="fw-bold text-uppercase small text-muted tracking-wider">Medications & Directions</span>
+        </div>
+
+        <table class="table-rx">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 38%;">Medicine / Strength</th>
+                    <th style="width: 15%;">Dose</th>
+                    <th style="width: 15%;">Frequency</th>
+                    <th style="width: 12%;">Duration</th>
+                    <th style="width: 15%;">Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if prescription and prescription.items %}
+                    {% for itm in prescription.items %}
+                    <tr>
+                        <td class="text-muted font-monospace small">{{ loop.index }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ itm.medicine_name }}</div>
+                            {% if itm.instructions %}
+                                <div class="text-muted small fst-italic"><i class="bi bi-info-circle me-1"></i>{{ itm.instructions }}</div>
+                            {% endif %}
+                        </td>
+                        <td><span class="small">{{ itm.dose or '-' }}</span></td>
+                        <td><span class="badge bg-light text-dark border">{{ itm.frequency or 'As directed' }}</span></td>
+                        <td><span class="small">{{ itm.duration or '-' }}</span></td>
+                        <td><span class="fw-semibold">{{ itm.quantity|int if itm.quantity and itm.quantity.is_integer() else (itm.quantity or '-') }}</span></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4 small">
+                            No medications prescribed for this visit.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <!-- Advice & Instructions -->
+        {% if encounter.hopi or (prescription and prescription.notes) %}
+        <div class="p-3 bg-light rounded-3 mb-4 border small">
+            <span class="fw-bold text-dark d-block mb-1"><i class="bi bi-chat-left-dots text-primary me-1"></i> Special Advice / Instructions:</span>
+            <div class="text-muted">{{ prescription.notes if prescription and prescription.notes else 'Adequate rest and fluid intake. Return if symptoms worsen.' }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Signature & Stamp Section -->
+        <div class="doctor-sign-block d-flex justify-content-between align-items-end">
+            <div class="stamp-box">
+                Clinic Stamp
+            </div>
+            <div class="text-end">
+                <div class="sign-line ms-auto"></div>
+                <div class="fw-bold text-dark mt-1">{{ encounter.doctor.display_name if encounter.doctor else (current_user.doctor_name or 'Attending Doctor') }}</div>
+                <div class="text-muted small">{{ encounter.doctor.specialty if encounter.doctor and encounter.doctor.specialty else 'Licensed Medical Practitioner' }}</div>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-top text-center text-muted small fst-italic">
+            Please bring this prescription slip on your follow-up visit.
+        </div>
+    </div>
+
+</body>
+</html>
