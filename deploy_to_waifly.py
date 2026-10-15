@@ -1,123 +1,73 @@
-"""
-Direct deployment script for Waifly container hosting.
-Connects via SFTP using credentials from .env and synchronizes application files to the server.
-"""
+"""Stage a committed EMR release without uploading environment files or databases.
 
-import os
-import sys
+--activate replaces the hosted startup file only. The host must then restart the
+process. The bootstrap backs up/upgrades the hosted database before serving the
+new code. Existing application sources remain available for rollback.
+"""
+from pathlib import Path, PurePosixPath
+import argparse, hashlib, json, os, subprocess
 import paramiko
 from config import load_dotenv_file
+ROOT = Path(__file__).resolve().parent
 
-LOCAL_DIR = os.path.abspath(os.path.dirname(__file__))
-load_dotenv_file(os.path.join(LOCAL_DIR, '.env'))
+def mkdirs(sftp, path):
+    current = ''
+    for part in PurePosixPath(path).parts:
+        if part in ('.','..','/'):
+            raise ValueError('Only safe relative remote paths are allowed.')
+        current = current+'/'+part if current else part
+        try:sftp.stat(current)
+        except FileNotFoundError:sftp.mkdir(current)
 
-# Waifly SFTP Configuration (loaded strictly from .env / environment variables)
-SFTP_HOST = os.environ.get('WAIFLY_SFTP_HOST', '')
-SFTP_PORT = int(os.environ.get('WAIFLY_SFTP_PORT', 2022))
-SFTP_USER = os.environ.get('WAIFLY_SFTP_USER', '')
-SFTP_PASS = os.environ.get('WAIFLY_SFTP_PASS', '')
+def put_bytes(sftp, remote, data):
+    parent = str(PurePosixPath(remote).parent)
+    if parent != '.':mkdirs(sftp, parent)
+    with sftp.file(remote,'wb') as stream:stream.write(data)
+    with sftp.file(remote,'rb') as stream:received=stream.read()
+    if hashlib.sha256(received).digest()!=hashlib.sha256(data).digest():
+        raise RuntimeError('Uploaded file fingerprint differs: '+remote)
 
-# Files & directories to sync
-SYNC_FILES = [
-    '.env',
-    'config.py',
-    'passenger_wsgi.py',
-    'seed.py',
-    'requirements.txt',
-    'README.md'
-]
-
-SYNC_DIRS = [
-    'app',
-    'migrations',
-    'database'
-]
-
-# Remote run.py template for Waifly (runs on 0.0.0.0:25516 with multi-threading)
-REMOTE_RUN_PY = """import os
-from app import create_app
-
-app = create_app(os.environ.get('FLASK_ENV', 'development'))
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=25516, debug=False, threaded=True)
-"""
-
-
-def ensure_remote_dir(sftp, remote_dir):
-    parts = remote_dir.strip('/').split('/')
-    path = ''
-    for part in parts:
-        path = f"{path}/{part}" if path else part
-        try:
-            sftp.stat(path)
-        except IOError:
-            try:
-                sftp.mkdir(path)
-                print(f"Created remote dir: {path}")
-            except Exception:
-                pass
-
-
-def upload_file(sftp, local_path, remote_path):
-    remote_dir = os.path.dirname(remote_path)
-    if remote_dir:
-        ensure_remote_dir(sftp, remote_dir)
-    sftp.put(local_path, remote_path)
-    print(f"  [OK] Uploaded -> {remote_path}")
-
-
-def deploy():
-    if not SFTP_HOST or not SFTP_USER or not SFTP_PASS:
-        print("Error: Missing SFTP credentials. Please set WAIFLY_SFTP_HOST, WAIFLY_SFTP_USER, and WAIFLY_SFTP_PASS in .env")
-        sys.exit(1)
-
-    print("=" * 60)
-    print(f"Deploying to Waifly: {SFTP_HOST}:{SFTP_PORT} as {SFTP_USER}")
-    print("=" * 60)
-
-    transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--activate',action='store_true',help='Install startup switch after staging; restart still required')
+    args=parser.parse_args()
+    load_dotenv_file(str(ROOT/'.env'))
+    revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    release='emr-'+revision[:12]
+    files=subprocess.check_output(['git','ls-tree','-r','--name-only',revision],cwd=ROOT,text=True).splitlines()
+    selected=[p for p in files if p.startswith(('app/','migrations/')) or p in ['config.py','requirements.txt','tools/upgrade_database.py']]
+    if not selected:raise RuntimeError('No application files found in the committed release.')
+    host=os.environ['WAIFLY_SFTP_HOST'];port=int(os.environ.get('WAIFLY_SFTP_PORT',2022))
+    transport=paramiko.Transport((host,port));transport.banner_timeout=30;transport.auth_timeout=30
     try:
-        transport.connect(username=SFTP_USER, password=SFTP_PASS)
-        sftp = paramiko.SFTPClient.from_transport(transport)
-        print("Connected via SFTP successfully!\n")
-
-        # 1. Upload remote run.py with Waifly port 25516
-        with sftp.file('run.py', 'w') as f:
-            f.write(REMOTE_RUN_PY)
-        print("  [OK] Uploaded -> run.py (0.0.0.0:25516 threaded)")
-
-        # 2. Upload root files
-        for fname in SYNC_FILES:
-            lpath = os.path.join(LOCAL_DIR, fname)
-            if os.path.exists(lpath):
-                upload_file(sftp, lpath, fname)
-
-        # 3. Upload directories
-        for dname in SYNC_DIRS:
-            ldir = os.path.join(LOCAL_DIR, dname)
-            if not os.path.exists(ldir):
-                continue
-            for root, dirs, files in os.walk(ldir):
-                dirs[:] = [d for d in dirs if d not in ['__pycache__', '.pytest_cache']]
-                for file in files:
-                    if file.endswith(('.pyc', '.pyo', '.sqlite3-shm', '.sqlite3-wal')):
-                        continue
-                    full_local = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_local, LOCAL_DIR).replace('\\', '/')
-                    upload_file(sftp, full_local, rel_path)
-
+        transport.connect(username=os.environ['WAIFLY_SFTP_USER'],password=os.environ['WAIFLY_SFTP_PASS'])
+        sftp=paramiko.SFTPClient.from_transport(transport)
+        backup='.deploy-backups/'+release
+        mkdirs(sftp,backup)
+        for remote in ['run.py','config.py','requirements.txt','.env']:
+            destination=backup+'/'+remote
+            try:sftp.stat(destination)
+            except FileNotFoundError:
+                with sftp.file(remote,'rb') as source:contents=source.read()
+                put_bytes(sftp,destination,contents)
+        manifest={}
+        for name in selected:
+            if '..' in PurePosixPath(name).parts or name.endswith(('.sqlite3','.db','.pyc')):
+                raise RuntimeError('Invalid deployment file: '+name)
+            content=subprocess.check_output(['git','show',revision+':'+name],cwd=ROOT)
+            put_bytes(sftp,'.releases/'+release+'/'+name,content)
+            manifest[name]=hashlib.sha256(content).hexdigest()
+        put_bytes(sftp,'.releases/'+release+'/release-manifest.json',json.dumps({'revision':revision,'files':manifest},indent=2).encode())
+        print('Staged release:',release,'verified files:',len(manifest))
+        if args.activate:
+            template=subprocess.check_output(['git','show',revision+':tools/waifly_bootstrap.py'],cwd=ROOT).decode('utf-8')
+            startup=template.replace('RELEASE_NAME = None','RELEASE_NAME = '+repr(release),1).encode('utf-8')
+            put_bytes(sftp,backup+'/new-run.py',startup)
+            temporary='run.py.pending'
+            put_bytes(sftp,temporary,startup)
+            sftp.posix_rename(temporary,'run.py')
+            print('Startup switch installed. Restart the hosted process to upgrade its database and load this release.')
+        else:print('Hosted startup, environment and database remain unchanged.')
         sftp.close()
-        transport.close()
-        print("\n" + "=" * 60)
-        print("Deployment completed successfully to Waifly!")
-        print("=" * 60)
-    except Exception as e:
-        print(f"Deployment failed: {e}")
-        if transport.is_active():
-            transport.close()
-        sys.exit(1)
-
-
-if __name__ == '__main__':
-    deploy()
+    finally:transport.close()
+if __name__=='__main__':main()
