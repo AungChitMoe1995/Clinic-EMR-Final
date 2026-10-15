@@ -76,55 +76,63 @@ def seed_database():
                 db.session.add(PatientFieldSetting(field_name=fname, label=label, is_required=is_req, is_visible=True))
         print("Seeded patient field requirement settings.")
 
-        # 5. Default Users & Clinic Accounts
-        # Clinic Account (One-Account-One-Clinic)
-        acc = Account.query.filter_by(phone_number='09123456789').first()
-        if not acc:
-            acc = Account(
-                phone_number='09123456789',
-                clinic_name='Central Clinic (Yangon)',
-                doctor_name='Dr. Aung Kyaw',
-                is_active=True
-            )
-            acc.set_password('password123')
-            db.session.add(acc)
-            print("Seeded Default Clinic Account: Phone=09123456789 / Password=password123")
+        # 5. Optional demo users
+        # Never provision accounts with public, built-in passwords.
+        demo_passwords = {
+            'clinic': os.environ.get('SEED_CLINIC_PASSWORD'),
+            'admin': os.environ.get('SEED_ADMIN_PASSWORD'),
+            'reception': os.environ.get('SEED_RECEPTION_PASSWORD'),
+            'doctor': os.environ.get('SEED_DOCTOR_PASSWORD'),
+        }
+        supplied = [v for v in demo_passwords.values() if v]
+        if supplied and (len(supplied) != 4 or len(set(supplied)) != 4 or any(len(v) < 12 for v in supplied)):
+            raise ValueError('Provide four different demo passwords, each at least 12 characters.')
+        if not all(demo_passwords.values()):
+            print('Skipped demo accounts. Set unique SEED_*_PASSWORD environment variables to create them.')
+        else:
+            acc = Account.query.filter_by(phone_number='09123456789').first()
+            if not acc:
+                acc = Account(
+                    phone_number='09123456789',
+                    clinic_name='Central Clinic (Yangon)',
+                    doctor_name='Dr. Aung Kyaw',
+                    is_active=True
+                )
+                acc.set_password(demo_passwords['clinic'])
+                db.session.add(acc)
+                print('Seeded demo clinic account.')
 
-        # Admin User
-        admin = User.query.filter_by(username='admin').first()
-        if not admin:
-            admin = User(username='admin', role='ADMINISTRATOR', is_active=True)
-            admin.set_password('admin123')
-            db.session.add(admin)
-            print("Seeded Administrator: admin / admin123")
+            admin = User.query.filter_by(username='admin').first()
+            if not admin:
+                admin = User(username='admin', role='ADMINISTRATOR', is_active=True)
+                admin.set_password(demo_passwords['admin'])
+                db.session.add(admin)
+                print('Seeded demo administrator.')
 
-        # Receptionist
-        reception = User.query.filter_by(username='reception').first()
-        if not reception:
-            reception = User(username='reception', role='RECEPTIONIST', is_active=True)
-            reception.set_password('reception123')
-            db.session.add(reception)
-            print("Seeded Receptionist: reception / reception123")
+            reception = User.query.filter_by(username='reception').first()
+            if not reception:
+                reception = User(username='reception', role='RECEPTIONIST', is_active=True)
+                reception.set_password(demo_passwords['reception'])
+                db.session.add(reception)
+                print('Seeded demo receptionist.')
 
-        # Doctor User & Doctor Profile
-        doc_user = User.query.filter_by(username='dr.aung').first()
-        if not doc_user:
-            doc_user = User(username='dr.aung', role='DOCTOR', is_active=True)
-            doc_user.set_password('doctor123')
-            db.session.add(doc_user)
-            db.session.flush()
-
-            doctor = Doctor(
-                user_id=doc_user.id,
-                name='Aung Kyaw',
-                title='Dr.',
-                specialty='General Medicine',
-                phone='09123456789',
-                email='dr.aung@clinic.com',
-                is_active=True
-            )
-            db.session.add(doctor)
-            print("Seeded Doctor User: dr.aung / doctor123 and Doctor Profile: Dr. Aung Kyaw")
+            doc_user = User.query.filter_by(username='dr.aung').first()
+            if not doc_user:
+                doc_user = User(username='dr.aung', role='DOCTOR', is_active=True)
+                doc_user.set_password(demo_passwords['doctor'])
+                db.session.add(doc_user)
+                db.session.flush()
+                doctor = Doctor(
+                    user_id=doc_user.id,
+                    name='Aung Kyaw',
+                    title='Dr.',
+                    specialty='General Medicine',
+                    phone='09123456789',
+                    email='dr.aung@clinic.com',
+                    is_active=True
+                )
+                db.session.add(doctor)
+                print('Seeded demo doctor user and profile.')
 
         # 6. Sample Inventory Categories and Items
         cat_oral = InventoryCategory.query.filter_by(name='Oral Solid').first()

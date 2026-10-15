@@ -1,2 +1,11 @@
-app/static/** linguist-vendored
-app/templates/** linguist-vendored
+*.py text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.yml text eol=lf
+app/static/vendor/** linguist-vendored
+*.sqlite3 -text
+*.png -text
+*.jpeg -text

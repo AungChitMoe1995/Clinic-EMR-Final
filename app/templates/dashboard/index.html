@@ -79,7 +79,7 @@
             <div class="stat-tile">
                 <div>
                     <span class="stat-tile-label">Today's Invoiced</span>
-                    <div class="stat-tile-value" style="font-size: 1.35rem;">{{ "%.0f"|format(today_billed) }}</div>
+                    <div class="stat-tile-value" style="font-size: 1.35rem;">{{ "%.2f"|format(today_billed) }}</div>
                     <span class="text-muted small">MMK Total</span>
                 </div>
                 <div class="stat-tile-icon">
@@ -91,7 +91,7 @@
             <div class="stat-tile">
                 <div>
                     <span class="stat-tile-label">Collected</span>
-                    <div class="stat-tile-value text-success" style="font-size: 1.35rem;">{{ "%.0f"|format(today_collected) }}</div>
+                    <div class="stat-tile-value text-success" style="font-size: 1.35rem;">{{ "%.2f"|format(today_collected) }}</div>
                     <span class="text-muted small">MMK Received</span>
                 </div>
                 <div class="stat-tile-icon" style="color: var(--clinic-primary-container);">
@@ -119,12 +119,12 @@
             </div>
         </div>
 
-        <!-- Revenue Breakdown & Top Diagnoses -->
+        <!-- Billed items by inferred category & Top Diagnoses -->
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
                     <span class="fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="bi bi-pie-chart text-success"></i> Revenue Distribution
+                        <i class="bi bi-pie-chart text-success"></i> Billed items by inferred category
                     </span>
                     <span class="text-muted small">Departmental</span>
                 </div>
@@ -172,9 +172,9 @@
                                     </a>
                                     <small class="text-muted d-block">{{ app.reason or 'Consultation' }}</small>
                                 </div>
-                                <a href="{{ url_for('appointments.start_encounter_from_appointment', appointment_id=app.id) }}" class="btn btn-primary btn-sm">
+                                <form method="post" action="{{ url_for('appointments.start_encounter_from_appointment', appointment_id=app.id) }}" class="d-inline" data-turbo="false"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-primary btn-sm">
                                     Start Visit
-                                </a>
+                                </button></form>
                             </li>
                             {% endfor %}
                         </ul>
@@ -299,7 +299,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
 <script>
 let volumeChartInstance = null;
 let revenueChartInstance = null;
@@ -351,7 +351,7 @@ function initDashboardCharts() {
         });
     }
 
-    // 2. Revenue Distribution Chart
+    // 2. Billed items by inferred category Chart
     const ctxRev = document.getElementById('revenuePieChart');
     if (ctxRev) {
         if (revenueChartInstance) {

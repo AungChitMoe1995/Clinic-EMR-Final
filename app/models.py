@@ -1,4 +1,6 @@
 import calendar
+import secrets
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, date, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
@@ -33,9 +35,15 @@ class User(db.Model):
     def check_password(self, password):
         if not self.password_hash:
             return False
-        if self.password_hash.startswith(('pbkdf2:', 'scrypt:', 'argon2:')):
-            return check_password_hash(self.password_hash, password)
-        return self.password_hash == password
+        if self.password_hash.startswith(('pbkdf2:', 'scrypt:')):
+            try:
+                return check_password_hash(self.password_hash, password)
+            except ValueError:
+                return False
+        if self.password_hash.startswith('argon2:'):
+            return False
+        # Compatibility for existing manual accounts. Login immediately upgrades this value.
+        return secrets.compare_digest(self.password_hash.encode('utf-8'), password.encode('utf-8'))
 
     def is_administrator(self):
         return True  # Simplified: all authenticated clinic accounts have full access
@@ -73,10 +81,15 @@ class Account(db.Model):
     def check_password(self, password):
         if not self.password_hash:
             return False
-        # Supports both standard Werkzeug hashes and plain text for manual phpMyAdmin database inserts
-        if self.password_hash.startswith(('pbkdf2:', 'scrypt:', 'argon2:')):
-            return check_password_hash(self.password_hash, password)
-        return self.password_hash == password
+        if self.password_hash.startswith(('pbkdf2:', 'scrypt:')):
+            try:
+                return check_password_hash(self.password_hash, password)
+            except ValueError:
+                return False
+        if self.password_hash.startswith('argon2:'):
+            return False
+        # Compatibility for existing manual accounts. Login immediately upgrades this value.
+        return secrets.compare_digest(self.password_hash.encode('utf-8'), password.encode('utf-8'))
 
     def is_administrator(self):
         return True
@@ -97,16 +110,7 @@ class Account(db.Model):
 
     @property
     def doctor_profile(self):
-        # Return first doctor profile or a mock profile matching doctor_name
-        doc = Doctor.query.filter_by(is_active=True).first()
-        if doc:
-            return doc
-        class MockDoc:
-            id = 1
-            display_name = self.doctor_name
-            name = self.doctor_name
-            specialty = 'General Medicine'
-        return MockDoc()
+        return Doctor.query.filter_by(phone=self.phone_number, name=self.doctor_name, is_active=True).first()
 
     def __repr__(self):
         return f"<Account {self.phone_number} ({self.clinic_name})>"
@@ -312,6 +316,9 @@ class PatientPhone(db.Model):
 class Encounter(db.Model):
     __tablename__ = 'encounters'
 
+    version = db.Column(db.Integer, nullable=False, default=1, server_default='1')
+    __mapper_args__ = {'version_id_col': version}
+
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patients.id', ondelete='RESTRICT'), nullable=False, index=True)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id', ondelete='SET NULL'), nullable=True, index=True)
@@ -429,8 +436,16 @@ class EncounterVital(db.Model):
     spo2 = db.Column(db.Integer, nullable=True)
     respiratory_rate = db.Column(db.Integer, nullable=True)
     weight = db.Column(db.Float, nullable=True)
+    height = db.Column(db.Float, nullable=True)  # cm
+    rbs = db.Column(db.Float, nullable=True)  # mg/dL
     notes = db.Column(db.String(255), nullable=True)
     recorded_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+    @property
+    def bmi(self):
+        if self.height and self.weight and self.height > 0 and self.weight > 0:
+            return round(self.weight / (self.height / 100) ** 2, 2)
+        return None
 
     @property
     def bp_display(self):
@@ -442,7 +457,7 @@ class EncounterVital(db.Model):
         return not any([
             self.bp_systolic, self.bp_diastolic, self.pulse,
             self.temperature, self.spo2, self.respiratory_rate,
-            self.weight, self.notes
+            self.weight, self.height, self.rbs, self.notes
         ])
 
 
@@ -548,6 +563,9 @@ class Procedure(db.Model):
 class Voucher(db.Model):
     __tablename__ = 'vouchers'
 
+    version = db.Column(db.Integer, nullable=False, default=1, server_default='1')
+    __mapper_args__ = {'version_id_col': version}
+
     id = db.Column(db.Integer, primary_key=True)
     voucher_number = db.Column(db.String(64), unique=True, nullable=False, index=True)
     encounter_id = db.Column(db.Integer, db.ForeignKey('encounters.id', ondelete='RESTRICT'), nullable=False, index=True)
@@ -568,17 +586,19 @@ class Voucher(db.Model):
 
     @property
     def total_paid(self):
-        return sum(p.amount for p in self.payments)
+        return float(sum((Decimal(str(p.amount)) for p in self.payments), Decimal('0')).quantize(Decimal('0.01')))
 
     @property
     def balance_due(self):
-        return max(0.0, self.total - self.total_paid)
+        return float(max(Decimal('0'), Decimal(str(self.total or 0)) - Decimal(str(self.total_paid))))
 
     def update_status_and_totals(self):
-        self.subtotal = sum(item.amount for item in self.items)
-        self.total = max(0.0, self.subtotal - (self.discount or 0.0))
+        self.subtotal = float(sum((Decimal(str(item.amount)) for item in self.items), Decimal('0')).quantize(Decimal('0.01')))
+        self.total = float(max(Decimal('0'), Decimal(str(self.subtotal)) - Decimal(str(self.discount or 0))))
+        if self.status == 'cancelled':
+            return
         paid = self.total_paid
-        if paid >= self.total and self.total > 0:
+        if paid >= self.total:
             self.status = 'fully_paid'
         elif paid > 0:
             self.status = 'partially_paid'
@@ -642,6 +662,9 @@ class Payment(db.Model):
 
 class Appointment(db.Model):
     __tablename__ = 'appointments'
+
+    version = db.Column(db.Integer, nullable=False, default=1, server_default='1')
+    __mapper_args__ = {'version_id_col': version}
 
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patients.id', ondelete='CASCADE'), nullable=False, index=True)

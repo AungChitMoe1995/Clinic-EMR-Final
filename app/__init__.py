@@ -14,17 +14,22 @@ from app.routes import all_blueprints
 def set_sqlite_pragma(dbapi_connection, connection_record):
     if isinstance(dbapi_connection, sqlite3.Connection):
         cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON;")
         cursor.execute("PRAGMA journal_mode=WAL;")
         cursor.execute("PRAGMA synchronous=NORMAL;")
         cursor.execute("PRAGMA busy_timeout=5000;")
         cursor.close()
 
-def create_app(config_name=None):
+def create_app(config_name=None, overrides=None):
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV', 'development')
 
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config.get(config_name, config['default']))
+    if overrides:
+        app.config.update(overrides)
+    if config_name == 'production' and not (os.environ.get('SECRET_KEY') or (overrides or {}).get('SECRET_KEY')):
+        raise RuntimeError('Set a stable SECRET_KEY before starting a production server.')
 
     # Ensure instance and database directories exist
     try:
@@ -41,6 +46,11 @@ def create_app(config_name=None):
     @app.before_request
     def record_start_time():
         g.start_time = time.perf_counter()
+        if '_account_id' in session or '_user_id' in session:
+            from app.helpers import get_current_user
+            user = get_current_user()
+            if user is None or not user.is_active:
+                session.clear()
 
     # Global template context processor with request-level caching
     @app.context_processor
@@ -55,6 +65,11 @@ def create_app(config_name=None):
         if hasattr(g, 'start_time'):
             elapsed = (time.perf_counter() - g.start_time) * 1000
             response.headers['X-Server-Execution-Time'] = f"{elapsed:.2f}ms"
+        if response.mimetype == 'text/html':
+            response.headers['Cache-Control'] = 'no-store, private'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Referrer-Policy'] = 'same-origin'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         return response
 
     # Register all consolidated Blueprints from routes.py

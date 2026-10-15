@@ -40,13 +40,13 @@ def test_full_clinic_clinical_workflow(client, test_users):
     assert b'Documents' not in res_detail.data
 
     # 4. Doctor logs in and opens Encounter Workspace
-    client.get('/logout', follow_redirects=True)
+    client.post('/logout', follow_redirects=True)
     client.post('/login', data={
         'username': 'test_doctor',
         'password': 'doctor123'
     }, follow_redirects=True)
 
-    res_new_enc = client.get(f'/encounters/new?patient_id={patient.id}', follow_redirects=True)
+    res_new_enc = client.post(f'/encounters/new?patient_id={patient.id}', follow_redirects=True)
     assert res_new_enc.status_code == 200
     # Verify desktop 2-column clinical hierarchy
     assert b'1. History of Present Illness (HOPI)' in res_new_enc.data
@@ -65,6 +65,7 @@ def test_full_clinic_clinical_workflow(client, test_users):
     # 5. Doctor saves meaningful clinical encounter
     res_save_enc = client.post(f'/encounters/{draft_enc.id}', data={
         'action': 'save',
+        'record_version': str(draft_enc.version),
         'hopi': 'Severe intermittent headache for 4 days',
         'examination': 'BP 150/95 mmHg, pupil equal and reactive',
         'diagnosis_text[]': ['Essential Hypertension'],
@@ -133,7 +134,7 @@ def test_full_clinic_clinical_workflow(client, test_users):
     assert appointment.status == 'Scheduled'
 
     # 9. Admin view audit log
-    client.get('/logout', follow_redirects=True)
+    client.post('/logout', follow_redirects=True)
     client.post('/login', data={
         'username': 'test_admin',
         'password': 'admin123'

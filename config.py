@@ -62,6 +62,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     ITEMS_PER_PAGE = 15
+    ALLOW_CLINIC_REGISTRATION = os.environ.get('ALLOW_CLINIC_REGISTRATION', '0') == '1'
+    MAX_CONTENT_LENGTH = 2 * 1024 * 1024
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SEND_FILE_MAX_AGE_DEFAULT = 43200  # 12 hours browser caching for static CSS/JS

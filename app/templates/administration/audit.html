@@ -54,7 +54,7 @@
                         </td>
                         <td><span class="badge bg-secondary-subtle text-secondary">{{ log.entity_type }}</span></td>
                         <td>{{ log.entity_id or '—' }}</td>
-                        <td>{{ log.summary or '—' }}</td>
+                        <td style="max-width: 42rem; overflow-wrap: anywhere;">{% if log.action == 'REVISION' %}<details><summary>Clinical record before and after save</summary><pre class="small mb-0" style="white-space: pre-wrap; max-height: 24rem; overflow: auto;">{{ log.summary }}</pre></details>{% else %}{{ log.summary or '-' }}{% endif %}</td>
                     </tr>
                     {% endfor %}
                 {% else %}

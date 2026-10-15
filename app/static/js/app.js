@@ -8,6 +8,8 @@ function initApp() {
     initPatientViewState();
     initDynamicFormRows();
     initSettingsPreview();
+    initBMI();
+    initUnsavedEncounterWarning();
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
@@ -71,8 +73,12 @@ function initDynamicAgeAndDOB() {
         const d = parseInt(daysInput ? daysInput.value : 0) || 0;
 
         const target = new Date();
+        const originalDay = target.getDate();
+        target.setDate(1);
         target.setFullYear(target.getFullYear() - y);
         target.setMonth(target.getMonth() - m);
+        const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+        target.setDate(Math.min(originalDay, lastDay));
         target.setDate(target.getDate() - d);
 
         const yyyy = target.getFullYear();
@@ -361,3 +367,32 @@ function initSettingsPreview() {
     updatePreview();
 }
 
+
+function initBMI() {
+    const weight = document.querySelector('[name="weight"]');
+    const height = document.querySelector('[name="height"]');
+    const output = document.getElementById('bmi-value');
+    if (!weight || !height || !output) return;
+    const update = () => {
+        const w = Number(weight.value), h = Number(height.value);
+        output.textContent = w > 0 && h > 0 ? (w / ((h / 100) ** 2)).toFixed(2) : '-';
+    };
+    weight.addEventListener('input', update);
+    height.addEventListener('input', update);
+    update();
+}
+
+function initUnsavedEncounterWarning() {
+    const form = document.getElementById('encounter-form');
+    if (!form) return;
+    let dirty = false;
+    form.addEventListener('input', () => { dirty = true; });
+    form.addEventListener('change', () => { dirty = true; });
+    form.addEventListener('submit', () => { dirty = false; });
+    window.addEventListener('beforeunload', event => {
+        if (dirty) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
+}

@@ -12,3 +12,8 @@ database/*.sqlite3-wal
 htmlcov/
 ui_theme_reference/
 *.zip
+
+.local-build/
+.pytest-tmp/
+
+.local-backups/

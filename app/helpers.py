@@ -1,8 +1,13 @@
 import re
 import calendar
+import math
+import json
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from urllib.parse import urlsplit
+from sqlalchemy import update
 from datetime import datetime, date, timedelta
 from functools import wraps
-from flask import session, redirect, url_for, flash, request, abort
+from flask import session, redirect, url_for, flash, request, abort, current_app
 from sqlalchemy import or_, desc, asc
 from app.extensions import db
 from app.models import (
@@ -21,27 +26,51 @@ from app.models import (
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if '_account_id' not in session and '_user_id' not in session:
+        user = get_current_user()
+        if user is None or not user.is_active:
+            session.clear()
             flash('Please log in to access this page.', 'warning')
-            return redirect(url_for('auth.login', next=request.url))
+            return redirect(url_for('auth.login', next=request.full_path))
         return f(*args, **kwargs)
     return decorated_function
 
 
 def role_required(allowed_roles=None):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Role & permission restrictions removed for one-account-one-clinic architecture
-            if '_account_id' not in session and '_user_id' not in session:
-                return redirect(url_for('auth.login', next=request.url))
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
+    # This deployment intentionally shares clinic access across authenticated staff.
+    # Role labels describe staff profiles; they do not enforce segregation of duties.
+    return login_required
 
 
 def admin_required(f):
-    return role_required()(f)
+    return login_required(f)
+
+
+def safe_next_url(value):
+    if not value or not value.startswith('/') or value.startswith('//') or '\\' in value:
+        return None
+    parsed = urlsplit(value)
+    return value if not parsed.scheme and not parsed.netloc else None
+
+
+def finite_number(value, label, minimum=0, maximum=None, integer=False, optional=False):
+    if value is None or str(value).strip() == '':
+        if optional:
+            return None
+        raise ValueError(f'{label} is required.')
+    try:
+        result = float(value)
+    except (ValueError, TypeError):
+        raise ValueError(f'{label} must be a number.') from None
+    if not math.isfinite(result) or result < minimum or (maximum is not None and result > maximum):
+        raise ValueError(f'{label} is outside the allowed range.')
+    if integer and not result.is_integer():
+        raise ValueError(f'{label} must be a whole number.')
+    return int(result) if integer else result
+
+
+def money(value, label):
+    number = finite_number(value, label, maximum=1_000_000_000_000)
+    return Decimal(str(number)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
 def get_current_user():
@@ -67,34 +96,26 @@ def get_current_user():
 
 
 # ==========================================
-# 1.1 IN-MEMORY QUERY CACHING (FAST SWITCHING)
+# 1.1 REQUEST-LOCAL QUERY CACHING
 # ==========================================
 
-import time
-
-_CACHE = {}
 
 def get_cached(key, getter, ttl=60):
-    """Simple in-memory TTL cache to eliminate redundant network queries."""
-    now = time.time()
-    if key in _CACHE:
-        val, ts = _CACHE[key]
-        if now - ts < ttl:
-            return val
-    try:
-        val = getter()
-        _CACHE[key] = (val, now)
-        return val
-    except Exception:
-        if key in _CACHE:
-            return _CACHE[key][0]
-        raise
+    from flask import g
+    cache = g.setdefault('_query_cache', {})
+    if key not in cache:
+        cache[key] = getter()
+    return cache[key]
+
 
 def invalidate_cache(key=None):
+    from flask import g
+    cache = g.setdefault('_query_cache', {})
     if key:
-        _CACHE.pop(key, None)
+        cache.pop(key, None)
     else:
-        _CACHE.clear()
+        cache.clear()
+
 
 def get_active_doctors():
     return get_cached('active_doctors', lambda: Doctor.query.filter_by(is_active=True).all(), ttl=120)
@@ -207,8 +228,14 @@ class RegistrationNumberService:
                            .replace('{DD}', dd_str)
                 )
 
-                setting.next_number = current_val + increment
-                setting.updated_at = utcnow()
+                if increment < 1 or current_val < 1 or not 1 <= pad <= 12 or '{NUMBER}' not in pattern:
+                    raise ValueError('Registration format requires {NUMBER}, positive counters, and padding 1-12.')
+                changed = db.session.execute(update(RegistrationNumberSetting).where(
+                    RegistrationNumberSetting.id == setting.id, RegistrationNumberSetting.next_number == current_val
+                ).values(next_number=current_val + increment, updated_at=utcnow()).execution_options(synchronize_session=False))
+                if changed.rowcount != 1:
+                    db.session.rollback()
+                    continue
                 db.session.commit()
                 return reg_no
             except Exception as e:
@@ -237,6 +264,8 @@ class PatientService:
         except (ValueError, TypeError):
             return None
 
+        if min(years, months, days) < 0 or years > 150 or months > 11 or days > 31:
+            raise ValueError('Enter a nonnegative age with months 0-11 and days 0-31.')
         total_months = ref_date.month - months
         year_offset = 0
         while total_months <= 0:
@@ -288,7 +317,7 @@ class PatientService:
         return errors
 
     @classmethod
-    def create_patient(cls, data):
+    def create_patient(cls, data, commit=True):
         """
         Creates a new Patient record with safely allocated registration number
         and normalized phone records.
@@ -300,7 +329,7 @@ class PatientService:
             try:
                 dob = datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
             except (ValueError, TypeError):
-                dob = None
+                raise ValueError('Date of birth must be a valid YYYY-MM-DD date.') from None
         elif data.get('age_years') or data.get('age_months') or data.get('age_days'):
             dob = cls.calculate_dob_from_age(
                 data.get('age_years', 0),
@@ -308,6 +337,10 @@ class PatientService:
                 data.get('age_days', 0)
             )
 
+        if dob and dob > date.today():
+            raise ValueError('Date of birth cannot be in the future.')
+        if not (data.get('patient_name') or '').strip():
+            raise ValueError('Patient name is required.')
         patient = Patient(
             registration_number=reg_number,
             sir_name=data.get('sir_name', '').strip(),
@@ -334,7 +367,10 @@ class PatientService:
         db.session.flush()
 
         cls.normalize_and_set_phones(patient, data.get('phone_number', ''))
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return patient
 
     @classmethod
@@ -348,7 +384,7 @@ class PatientService:
             try:
                 patient.date_of_birth = datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
             except (ValueError, TypeError):
-                pass
+                raise ValueError('Date of birth must be valid.') from None
         elif data.get('age_years') is not None and (data.get('age_years') or data.get('age_months') or data.get('age_days')):
             patient.date_of_birth = cls.calculate_dob_from_age(
                 data.get('age_years', 0),
@@ -356,6 +392,10 @@ class PatientService:
                 data.get('age_days', 0)
             )
 
+        if patient.date_of_birth and patient.date_of_birth > date.today():
+            raise ValueError('Date of birth cannot be in the future.')
+        if not patient.patient_name:
+            raise ValueError('Patient name is required.')
         patient.marital_status = data.get('marital_status', patient.marital_status)
         patient.occupation = data.get('occupation', patient.occupation)
         patient.blood_group = data.get('blood_group', patient.blood_group)
@@ -416,20 +456,39 @@ class PatientService:
 # ==========================================
 
 class EncounterService:
+    @staticmethod
+    def snapshot(encounter):
+        def row(obj):
+            return {c.name: (getattr(obj, c.name).isoformat() if isinstance(getattr(obj,c.name), (date, datetime)) else getattr(obj,c.name)) for c in obj.__table__.columns}
+        return dict(record=row(encounter), history=row(encounter.history) if encounter.history else None,
+            vitals=[row(v) for v in encounter.vitals], diagnoses=[row(v) for v in encounter.diagnoses],
+            prescriptions=[dict(record=row(rx), items=[row(v) for v in rx.items]) for rx in encounter.prescriptions],
+            investigations=[row(v) for v in encounter.investigations_rel], procedures=[row(v) for v in encounter.procedures])
+
+    @classmethod
+    def create_draft(cls, patient, user, selected_doctor_id=None):
+        if not patient.is_active:
+            raise ValueError('This patient is inactive.')
+        encounter = Encounter(patient_id=patient.id, doctor_id=cls.resolve_doctor_for_user(user, selected_doctor_id), status='draft')
+        encounter.history = EncounterHistory(**cls.copy_previous_history(patient.id))
+        db.session.add(encounter)
+        db.session.flush()
+        return encounter
+
     @classmethod
     def resolve_doctor_for_user(cls, user, selected_doctor_id=None):
         """
         Enforces doctor auto-assignment rule:
         If current logged-in user is a Doctor, encounter is automatically assigned to that doctor.
         """
-        if user and user.is_doctor() and user.doctor_profile:
-            return user.doctor_profile.id
         if selected_doctor_id:
-            try:
-                doc = db.session.get(Doctor, int(selected_doctor_id))
-                return doc.id if doc else None
-            except (ValueError, TypeError):
-                return None
+            doc = db.session.get(Doctor, int(selected_doctor_id))
+            if not doc or not doc.is_active:
+                raise ValueError('Select an active doctor.')
+            return doc.id
+        if user and user.doctor_profile and user.doctor_profile.is_active:
+            return user.doctor_profile.id
+
         return None
 
     @classmethod
@@ -441,7 +500,7 @@ class EncounterService:
         prev_encounter = Encounter.query.filter_by(
             patient_id=patient_id,
             status='completed'
-        ).order_by(Encounter.encounter_date.desc()).first()
+        ).order_by(Encounter.encounter_date.desc(), Encounter.id.desc()).first()
 
         if prev_encounter and prev_encounter.history:
             h = prev_encounter.history
@@ -478,7 +537,7 @@ class EncounterService:
             if any(d.strip() for d in diagnoses if isinstance(d, str)):
                 return True
 
-            vital_fields = ['bp_systolic', 'bp_diastolic', 'pulse', 'temperature', 'spo2', 'respiratory_rate', 'weight']
+            vital_fields = ['bp_systolic', 'bp_diastolic', 'pulse', 'temperature', 'spo2', 'respiratory_rate', 'weight', 'height', 'rbs']
             if any(data.get(k) and str(data.get(k)).strip() for k in vital_fields):
                 return True
 
@@ -515,6 +574,8 @@ class EncounterService:
         if encounter.procedures and len(encounter.procedures) > 0:
             return True
 
+        if encounter.history and encounter.status == 'completed':
+            return any(getattr(encounter.history, k) for k in ['pmh','psh','drug_history','allergy_history','family_history','social_history'])
         return False
 
     @classmethod
@@ -524,7 +585,13 @@ class EncounterService:
         if not encounter:
             return True
 
+        if encounter.status != 'draft' or encounter.vouchers.count():
+            return False
         if not cls.has_meaningful_content(encounter):
+            if encounter.appointment:
+                appointment = encounter.appointment
+                appointment.linked_encounter = None
+                appointment.status = 'Scheduled'
             db.session.delete(encounter)
             db.session.commit()
             return True
@@ -533,13 +600,20 @@ class EncounterService:
     @classmethod
     def save_encounter_from_form(cls, encounter, form_data, current_user):
         """Saves full clinical encounter details from the unified Encounter workspace."""
-        if current_user and current_user.is_doctor() and current_user.doctor_profile:
-            encounter.doctor_id = current_user.doctor_profile.id
-        elif form_data.get('doctor_id'):
-            try:
-                encounter.doctor_id = int(form_data.get('doctor_id'))
-            except (ValueError, TypeError):
-                pass
+        if form_data.get('record_version') and str(encounter.version) != form_data['record_version']:
+            raise ValueError('Another user saved this encounter. Reload it before applying your changes.')
+        before = cls.snapshot(encounter)
+        if form_data.get('doctor_id'):
+            encounter.doctor_id = cls.resolve_doctor_for_user(None, form_data['doctor_id'])
+        elif encounter.doctor_id is None:
+            encounter.doctor_id = cls.resolve_doctor_for_user(current_user)
+        vital_fields = ['bp_systolic', 'bp_diastolic', 'pulse', 'temperature', 'spo2', 'respiratory_rate', 'weight', 'height', 'rbs']
+        values = {k: finite_number(form_data.get(k), k.replace('_', ' ').title(),
+                    maximum=100 if k == 'spo2' else None,
+                    integer=k in ['bp_systolic','bp_diastolic','pulse','spo2','respiratory_rate'], optional=True)
+                  for k in vital_fields}
+        if values['height'] == 0:
+            raise ValueError('Height must be greater than zero when recorded.')
 
         encounter.hopi = form_data.get('hopi', '').strip() or None
         encounter.examination = form_data.get('examination', '').strip() or None
@@ -555,16 +629,12 @@ class EncounterService:
         encounter.history.family_history = form_data.get('family_history', '').strip() or None
         encounter.history.social_history = form_data.get('social_history', '').strip() or None
 
-        has_vitals = any(form_data.get(k) for k in ['bp_systolic', 'bp_diastolic', 'pulse', 'temperature', 'spo2', 'respiratory_rate', 'weight'])
-        if has_vitals:
-            vital = encounter.latest_vitals or EncounterVital(encounter_id=encounter.id)
-            vital.bp_systolic = int(form_data['bp_systolic']) if form_data.get('bp_systolic') else None
-            vital.bp_diastolic = int(form_data['bp_diastolic']) if form_data.get('bp_diastolic') else None
-            vital.pulse = int(form_data['pulse']) if form_data.get('pulse') else None
-            vital.temperature = float(form_data['temperature']) if form_data.get('temperature') else None
-            vital.spo2 = int(form_data['spo2']) if form_data.get('spo2') else None
-            vital.respiratory_rate = int(form_data['respiratory_rate']) if form_data.get('respiratory_rate') else None
-            vital.weight = float(form_data['weight']) if form_data.get('weight') else None
+        # Clearing all vital inputs clears the stored values too.
+        vital = encounter.latest_vitals
+        if any(v is not None for v in values.values()) or vital is not None:
+            vital = vital or EncounterVital(encounter_id=encounter.id)
+            for key, value in values.items():
+                setattr(vital, key, value)
             if vital not in encounter.vitals:
                 encounter.vitals.append(vital)
 
@@ -601,9 +671,9 @@ class EncounterService:
                 qty = None
                 if idx < len(quantities) and quantities[idx]:
                     try:
-                        qty = float(quantities[idx])
+                        qty = finite_number(quantities[idx], 'Prescription quantity', minimum=0.000001)
                     except ValueError:
-                        pass
+                        raise
 
                 item = PrescriptionItem(
                     medicine_name=med.strip(),
@@ -633,6 +703,8 @@ class EncounterService:
         for idx, iname in enumerate(inv_names):
             if iname and iname.strip():
                 status_val = inv_statuses[idx].strip() if idx < len(inv_statuses) and inv_statuses[idx] else 'Ordered'
+                if status_val not in ['Ordered', 'Pending', 'Completed', 'Cancelled']:
+                    raise ValueError('Select a valid investigation status.')
                 res_val = inv_results[idx].strip() if idx < len(inv_results) and inv_results[idx] else None
                 inv = Investigation(
                     encounter_id=encounter.id,
@@ -651,6 +723,8 @@ class EncounterService:
         for idx, pname in enumerate(proc_names):
             if pname and pname.strip():
                 pstat = proc_statuses[idx].strip() if idx < len(proc_statuses) and proc_statuses[idx] else 'Completed'
+                if pstat not in ['Scheduled', 'In Progress', 'Completed', 'Cancelled']:
+                    raise ValueError('Select a valid procedure status.')
                 pnote = proc_notes[idx].strip() if idx < len(proc_notes) and proc_notes[idx] else None
                 proc = Procedure(
                     encounter_id=encounter.id,
@@ -662,7 +736,17 @@ class EncounterService:
                 )
                 encounter.procedures.append(proc)
 
+        if encounter.appointment:
+            encounter.appointment.status = 'Completed'
         encounter.updated_at = utcnow()
+        db.session.flush()
+        actor = current_user
+        db.session.add(AuditLog(
+            user_id=actor.id if isinstance(actor, User) else None,
+            user_username=getattr(actor, 'username', None) or 'Clinic staff',
+            action='REVISION', entity_type='Encounter', entity_id=str(encounter.id),
+            summary=json.dumps({'before': before, 'after': cls.snapshot(encounter)}, ensure_ascii=False),
+        ))
         db.session.commit()
         return encounter
 
@@ -694,57 +778,52 @@ class BillingService:
     def create_voucher(cls, encounter_id, items_data, discount=0.0, notes=None):
         """Creates a voucher linked to an encounter. Patient is inferred from encounter."""
         encounter = Encounter.query.get_or_404(encounter_id)
-        v_number = cls.generate_voucher_number()
-
-        voucher = Voucher(
-            voucher_number=v_number,
-            encounter_id=encounter.id,
-            patient_id=encounter.patient_id,
-            discount=float(discount or 0.0),
-            notes=notes
-        )
+        if encounter.status != 'completed':
+            raise ValueError('Complete the clinical encounter before creating a voucher.')
+        parsed = []
+        for item in items_data:
+            description = (item.get('description') or '').strip()
+            if not description:
+                raise ValueError('Each billing line needs a description.')
+            quantity = Decimal(str(finite_number(item.get('quantity', 1), 'Quantity', minimum=0.000001, maximum=1_000_000)))
+            price = money(item.get('unit_price', 0), 'Unit price')
+            amount = (quantity * price).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            parsed.append((description, quantity, price, amount))
+        if not parsed:
+            raise ValueError('At least one billing item is required.')
+        discount = money(discount or 0, 'Discount')
+        subtotal = sum((i[3] for i in parsed), Decimal('0'))
+        if discount > subtotal:
+            raise ValueError('Discount cannot exceed the subtotal.')
+        voucher = Voucher(voucher_number=cls.generate_voucher_number(), encounter_id=encounter.id,
+            patient_id=encounter.patient_id, discount=float(discount), notes=notes)
+        voucher.items = [VoucherItem(description=desc, quantity=float(qty), unit_price=float(price), amount=float(amount)) for desc,qty,price,amount in parsed]
         db.session.add(voucher)
-        db.session.flush()
-
-        for item_data in items_data:
-            desc = item_data.get('description', '').strip()
-            if not desc:
-                continue
-            qty = float(item_data.get('quantity', 1.0))
-            price = float(item_data.get('unit_price', 0.0))
-            v_item = VoucherItem(
-                voucher_id=voucher.id,
-                description=desc,
-                quantity=qty,
-                unit_price=price,
-                amount=qty * price
-            )
-            db.session.add(v_item)
-
-        db.session.flush()
         voucher.update_status_and_totals()
         db.session.commit()
         return voucher
 
     @classmethod
     def record_payment(cls, voucher_id, amount, payment_method='Cash', reference=None, notes=None):
-        """Records a payment against a voucher and updates voucher status."""
-        voucher = db.session.get(Voucher, voucher_id)
+        voucher = db.session.execute(db.select(Voucher).where(Voucher.id == voucher_id).with_for_update()).scalar_one_or_none()
         if not voucher:
-            raise ValueError("Voucher not found")
-        amount = float(amount or 0.0)
+            raise ValueError('Voucher not found.')
+        if voucher.status == 'cancelled':
+            raise ValueError('Payments cannot be added to a cancelled voucher.')
+        amount = money(amount, 'Payment')
         if amount <= 0:
-            raise ValueError("Payment amount must be greater than zero.")
-
-        payment = Payment(
-            voucher=voucher,
-            amount=amount,
-            payment_method=payment_method,
-            reference=reference,
-            notes=notes
-        )
+            raise ValueError('Payment amount must be greater than zero.')
+        if amount > money(voucher.balance_due, 'Balance due'):
+            raise ValueError('Payment exceeds the outstanding balance.')
+        if payment_method not in ['Cash', 'Bank', 'Mobile Payment', 'Other']:
+            raise ValueError('Select a valid payment method.')
+        payment = Payment(voucher=voucher, amount=float(amount), payment_method=payment_method, reference=reference, notes=notes)
+        # Append explicitly so calculations include the new payment before flushing.
+        if payment not in voucher.payments:
+            voucher.payments.append(payment)
         db.session.add(payment)
         voucher.update_status_and_totals()
+        voucher.updated_at = utcnow()  # Version check serializes concurrent balance updates.
         db.session.commit()
         return payment
 
@@ -776,28 +855,28 @@ class InventoryService:
         transaction_type: 'IN', 'OUT', 'ADJUSTMENT'
         """
         item = InventoryItem.query.get_or_404(item_id)
-        qty = float(quantity)
-
+        qty = finite_number(quantity, 'Stock quantity')
+        if not item.is_active:
+            raise ValueError('Cannot move stock for an inactive item.')
+        if transaction_type in ['IN', 'OUT'] and qty <= 0:
+            raise ValueError('Stock movement quantity must be positive.')
+        if transaction_type == 'OUT' and item.expiry_date and item.expiry_date < date.today():
+            raise ValueError('Cannot issue expired stock.')
         if transaction_type == 'IN':
-            if qty <= 0:
-                raise ValueError("Quantity for Stock In must be positive.")
-            item.quantity += qty
+            statement = update(InventoryItem).where(InventoryItem.id == item_id).values(quantity=InventoryItem.quantity + qty, updated_at=utcnow())
         elif transaction_type == 'OUT':
-            if qty <= 0:
-                raise ValueError("Quantity for Stock Out must be positive.")
-            if item.quantity < qty:
-                raise ValueError(f"Insufficient stock. Available: {item.quantity}, Requested: {qty}")
-            item.quantity -= qty
+            statement = update(InventoryItem).where(InventoryItem.id == item_id, InventoryItem.quantity >= qty).values(quantity=InventoryItem.quantity - qty, updated_at=utcnow())
         elif transaction_type == 'ADJUSTMENT':
-            if qty < 0:
-                raise ValueError("Adjusted quantity cannot be negative.")
-            diff = qty - item.quantity
-            item.quantity = qty
-            qty = diff
+            old = item.quantity
+            statement = update(InventoryItem).where(InventoryItem.id == item_id, InventoryItem.quantity == old).values(quantity=qty, updated_at=utcnow())
+            qty -= old
         else:
-            raise ValueError(f"Invalid transaction type: {transaction_type}")
-
-        item.updated_at = utcnow()
+            raise ValueError('Invalid stock transaction type.')
+        changed = db.session.execute(statement.execution_options(synchronize_session=False))
+        if changed.rowcount != 1:
+            db.session.rollback()
+            raise ValueError('Insufficient stock or stock changed concurrently. Refresh and try again.')
+        db.session.refresh(item)
 
         txn = InventoryTransaction(
             item_id=item.id,
@@ -831,12 +910,16 @@ class AppointmentService:
         if isinstance(appointment_date, str):
             appointment_date = datetime.strptime(appointment_date, '%Y-%m-%d').date()
 
+        if not db.session.get(Patient, patient_id):
+            raise ValueError('Patient not found.')
+        if doctor_id and not db.session.get(Doctor, int(doctor_id)):
+            raise ValueError('Doctor not found.')
         t = None
         if appointment_time and isinstance(appointment_time, str):
             try:
                 t = datetime.strptime(appointment_time, '%H:%M').time()
             except ValueError:
-                pass
+                raise ValueError('Appointment time must use HH:MM.') from None
 
         appointment = Appointment(
             patient_id=patient_id,
@@ -857,20 +940,18 @@ class AppointmentService:
         When a scheduled appointment becomes an actual clinical visit:
         creates an encounter linked to the appointment and updates appointment status to 'Completed'.
         """
-        appointment = Appointment.query.get_or_404(appointment_id)
-
-        doc_id = EncounterService.resolve_doctor_for_user(user, selected_doctor_id=appointment.doctor_id)
-
-        encounter = Encounter(
-            patient_id=appointment.patient_id,
-            doctor_id=doc_id,
-            status='draft'
-        )
-        db.session.add(encounter)
-        db.session.flush()
+        appointment = db.session.execute(db.select(Appointment).where(Appointment.id == appointment_id).with_for_update()).scalar_one_or_none()
+        if not appointment:
+            abort(404)
+        if appointment.encounter_id:
+            return db.session.get(Encounter, appointment.encounter_id)
+        if appointment.status in ['Cancelled', 'No Show', 'Completed']:
+            raise ValueError('Only an active scheduled appointment can start a visit.')
+        patient = db.session.get(Patient, appointment.patient_id)
+        encounter = EncounterService.create_draft(patient, user, appointment.doctor_id)
 
         appointment.encounter_id = encounter.id
-        appointment.status = 'Completed'
+        appointment.status = 'Confirmed'
         appointment.updated_at = utcnow()
 
         db.session.commit()

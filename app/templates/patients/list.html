@@ -176,9 +176,9 @@
                                 <a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-primary btn-sm" title="View Detail">
                                     <i class="bi bi-eye"></i> View
                                 </a>
-                                <a href="{{ url_for('encounters.new_encounter', patient_id=patient.id) }}" class="btn btn-primary btn-sm" title="New Encounter">
+                                <form method="post" action="{{ url_for('encounters.new_encounter', patient_id=patient.id) }}" class="d-inline" data-turbo="false"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-primary btn-sm" title="New Encounter">
                                     <i class="bi bi-plus-lg"></i> Consult
-                                </a>
+                                </button></form>
                             </td>
                         </tr>
                         {% endfor %}

@@ -103,9 +103,9 @@
                         </td>
                         <td class="text-end">
                             {% if app.status in ['Scheduled', 'Confirmed'] %}
-                            <a href="{{ url_for('appointments.start_encounter_from_appointment', appointment_id=app.id) }}" class="btn btn-outline-success btn-sm py-0 px-2" title="Start Clinical Visit">
+                            <form method="post" action="{{ url_for('appointments.start_encounter_from_appointment', appointment_id=app.id) }}" class="d-inline" data-turbo="false"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" title="Start Clinical Visit">
                                 <i class="bi bi-journal-plus"></i> Start Encounter
-                            </a>
+                            </button></form>
                             {% elif app.encounter_id %}
                             <a href="{{ url_for('encounters.encounter_detail', encounter_id=app.encounter_id) }}" class="btn btn-outline-primary btn-sm py-0 px-2">
                                 <i class="bi bi-eye"></i> View Encounter

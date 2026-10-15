@@ -6,13 +6,14 @@
 {% if inventory_items %}
 <datalist id="inventory-meds">
     {% for item in inventory_items %}
-    <option value="{{ item.item_name }}{% if item.generic_name %} ({{ item.generic_name }}){% endif %} - In Stock: {{ item.quantity }} {{ item.unit or '' }}">
+    <option value="{{ item.item_name }}" label="{{ item.generic_name or '' }} | Available: {{ item.quantity }} {{ item.unit or '' }}"></option>
     {% endfor %}
 </datalist>
 {% endif %}
 
 <form method="POST" action="{{ url_for('encounters.encounter_detail', encounter_id=encounter.id) }}" id="encounter-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="record_version" value="{{ encounter.version }}">
 
     <!-- Breadcrumb & Status Context Ribbon -->
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
@@ -84,12 +85,7 @@
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <div class="d-flex align-items-center gap-2 bg-light px-2 py-1 rounded-3">
                     <label for="doctor_id" class="small fw-semibold text-muted mb-0 whitespace-nowrap">Doctor:</label>
-                    {% if current_user.is_doctor() %}
-                        <span class="badge badge-completed fw-semibold">
-                            <i class="bi bi-person-check-fill"></i> {{ current_user.doctor_profile.display_name if current_user.doctor_profile else current_user.username }}
-                        </span>
-                        <input type="hidden" name="doctor_id" value="{{ current_user.doctor_profile.id if current_user.doctor_profile else '' }}">
-                    {% else %}
+
                         <select name="doctor_id" id="doctor_id" class="form-select form-select-sm" style="min-width: 180px;">
                             <option value="">-- Unassigned Doctor --</option>
                             {% for doc in doctors %}
@@ -98,7 +94,7 @@
                                 </option>
                             {% endfor %}
                         </select>
-                    {% endif %}
+
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
@@ -132,7 +128,7 @@
                 {% set vouchers = encounter.vouchers.all() %}
                 {% if vouchers %}
                     <span class="badge badge-completed">
-                        <i class="bi bi-receipt"></i> Voucher #{{ vouchers[0].voucher_number }} ({{ "%.0f"|format(vouchers[0].total) }} MMK)
+                        <i class="bi bi-receipt"></i> Voucher #{{ vouchers[0].voucher_number }} ({{ "%.2f"|format(vouchers[0].total) }} MMK)
                     </span>
                 {% else %}
                     <span class="badge badge-neutral"><i class="bi bi-receipt"></i> No Voucher</span>
@@ -245,27 +241,27 @@
                         <div class="row g-2">
                             <div class="col-6">
                                 <label class="form-label small fw-semibold text-muted mb-1">Past Medical (PMH):</label>
-                                <textarea name="pmh" rows="2" class="form-control form-control-sm" placeholder="Hypertension, DM...">{{ encounter.history.pmh if encounter.history else '' }}</textarea>
+                                <textarea name="pmh" rows="2" class="form-control form-control-sm" placeholder="Hypertension, DM...">{{ (encounter.history.pmh or '') if encounter.history else '' }}</textarea>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-semibold text-muted mb-1">Past Surgical (PSH):</label>
-                                <textarea name="psh" rows="2" class="form-control form-control-sm" placeholder="Appendectomy...">{{ encounter.history.psh if encounter.history else '' }}</textarea>
+                                <textarea name="psh" rows="2" class="form-control form-control-sm" placeholder="Appendectomy...">{{ (encounter.history.psh or '') if encounter.history else '' }}</textarea>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-semibold text-muted mb-1">Current Drugs:</label>
-                                <textarea name="drug_history" rows="2" class="form-control form-control-sm" placeholder="Amlodipine 5mg...">{{ encounter.history.drug_history if encounter.history else '' }}</textarea>
+                                <textarea name="drug_history" rows="2" class="form-control form-control-sm" placeholder="Amlodipine 5mg...">{{ (encounter.history.drug_history or '') if encounter.history else '' }}</textarea>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-semibold text-danger mb-1"><i class="bi bi-exclamation-circle"></i> Allergies:</label>
-                                <textarea name="allergy_history" rows="2" class="form-control form-control-sm border-warning" placeholder="Penicillin, NSAIDs, seafood...">{{ encounter.history.allergy_history if encounter.history else '' }}</textarea>
+                                <textarea name="allergy_history" rows="2" class="form-control form-control-sm border-warning" placeholder="Penicillin, NSAIDs, seafood...">{{ (encounter.history.allergy_history or '') if encounter.history else '' }}</textarea>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-semibold text-muted mb-1">Family History:</label>
-                                <textarea name="family_history" rows="2" class="form-control form-control-sm" placeholder="CAD, DM, cancer...">{{ encounter.history.family_history if encounter.history else '' }}</textarea>
+                                <textarea name="family_history" rows="2" class="form-control form-control-sm" placeholder="CAD, DM, cancer...">{{ (encounter.history.family_history or '') if encounter.history else '' }}</textarea>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-semibold text-muted mb-1">Social History:</label>
-                                <textarea name="social_history" rows="2" class="form-control form-control-sm" placeholder="Smoking, Alcohol, Betel quid...">{{ encounter.history.social_history if encounter.history else '' }}</textarea>
+                                <textarea name="social_history" rows="2" class="form-control form-control-sm" placeholder="Smoking, Alcohol, Betel quid...">{{ (encounter.history.social_history or '') if encounter.history else '' }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -321,46 +317,13 @@
                 <div class="clinical-card-body">
                     {% set v = encounter.latest_vitals %}
                     <div class="row g-2">
-                        <div class="col-4">
-                            <div class="vital-box">
-                                <span class="vital-box-label"><i class="bi bi-heart-pulse"></i> BP (mmHg)</span>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" name="bp_systolic" class="form-control form-control-sm px-1 text-center" placeholder="Sys" value="{{ v.bp_systolic if v else '' }}">
-                                    <span class="input-group-text px-1">/</span>
-                                    <input type="number" name="bp_diastolic" class="form-control form-control-sm px-1 text-center" placeholder="Dia" value="{{ v.bp_diastolic if v else '' }}">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="vital-box">
-                                <span class="vital-box-label"><i class="bi bi-speedometer2"></i> Pulse (bpm)</span>
-                                <input type="number" name="pulse" class="form-control form-control-sm text-center" placeholder="72" value="{{ v.pulse if v else '' }}">
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="vital-box">
-                                <span class="vital-box-label"><i class="bi bi-thermometer-half"></i> Temp (&deg;F)</span>
-                                <input type="number" step="0.1" name="temperature" class="form-control form-control-sm text-center" placeholder="98.6" value="{{ v.temperature if v else '' }}">
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="vital-box">
-                                <span class="vital-box-label"><i class="bi bi-lungs"></i> SpO2 (%)</span>
-                                <input type="number" name="spo2" class="form-control form-control-sm text-center" placeholder="99" value="{{ v.spo2 if v else '' }}">
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="vital-box">
-                                <span class="vital-box-label"><i class="bi bi-wind"></i> Resp (/min)</span>
-                                <input type="number" name="respiratory_rate" class="form-control form-control-sm text-center" placeholder="18" value="{{ v.respiratory_rate if v else '' }}">
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="vital-box">
-                                <span class="vital-box-label"><i class="bi bi-person"></i> Weight (kg)</span>
-                                <input type="number" step="0.1" name="weight" class="form-control form-control-sm text-center" placeholder="60.0" value="{{ v.weight if v else '' }}">
-                            </div>
-                        </div>
+                        {% for key,label,step in [('bp_systolic','BP systolic (mmHg)','1'),('bp_diastolic','BP diastolic (mmHg)','1'),('pulse','Pulse (bpm)','1'),('temperature','Temperature (F)','0.1'),('spo2','SpO2 (%)','1'),('respiratory_rate','Respiratory rate (/min)','1'),('weight','Weight (kg)','0.1'),('height','Height (cm)','0.1'),('rbs','RBS (mg/dL)','0.1')] %}
+                        <div class="col-6 col-md-4"><div class="vital-box">
+                            <label class="vital-box-label" for="vital-{{ key }}">{{ label }}</label>
+                            <input id="vital-{{ key }}" type="number" name="{{ key }}" step="{{ step }}" min="{{ '0.1' if key == 'height' else '0' }}" {% if key == 'spo2' %}max="100"{% endif %} class="form-control form-control-sm text-center" value="{{ v|attr(key) if v and v|attr(key) is not none else '' }}">
+                        </div></div>
+                        {% endfor %}
+                        <div class="col-6 col-md-4"><div class="vital-box"><span class="vital-box-label">BMI (kg/m2)</span><output id="bmi-value" class="form-control form-control-sm text-center">{{ v.bmi if v and v.bmi is not none else '-' }}</output></div></div>
                     </div>
                 </div>
             </div>
@@ -509,7 +472,7 @@
                                     </a>
                                     <span class="badge badge-{{ v.status }} ms-1">{{ v.status|replace('_', ' ') }}</span>
                                 </div>
-                                <span class="fw-bold text-dark">{{ "%.0f"|format(v.total) }} MMK</span>
+                                <span class="fw-bold text-dark">{{ "%.2f"|format(v.total) }} MMK</span>
                             </li>
                             {% endfor %}
                         </ul>

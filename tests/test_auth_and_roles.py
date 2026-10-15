@@ -6,7 +6,7 @@ def test_login_and_logout(client, test_users):
     assert resp.status_code == 200
     assert b'Patients' in resp.data
 
-    logout_resp = client.get('/logout', follow_redirects=True)
+    logout_resp = client.post('/logout', follow_redirects=True)
     assert logout_resp.status_code == 200
     assert b'Sign In' in logout_resp.data
 

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Start visit - EASY EMR{% endblock %}
+{% block content %}<h1 class="h4">Start visit for {{ patient.full_name }}</h1>
+<p>{{ patient.registration_number }}</p>
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary" type="submit">Start clinical visit</button>
+<a href="{{ url_for('patients.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary">Back to patient</a></form>{% endblock %}

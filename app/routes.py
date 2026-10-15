@@ -1,5 +1,7 @@
 from datetime import datetime, date, time, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, abort
+from sqlalchemy.orm.exc import StaleDataError
+from flask import current_app
 from app.extensions import db
 from app.models import (
     Account, User, Doctor, Patient, PatientPhone, Encounter, EncounterHistory,
@@ -13,7 +15,7 @@ from app.helpers import (
     login_required, role_required, admin_required, get_current_user,
     AuditService, RegistrationNumberService, PatientService,
     EncounterService, BillingService, InventoryService, AppointmentService,
-    get_active_doctors, get_active_inventory, invalidate_cache
+    get_active_doctors, get_active_inventory, invalidate_cache, safe_next_url, finite_number
 )
 
 # Initialize Blueprints (Preserves exact route naming conventions for templates & tests)
@@ -51,15 +53,16 @@ def login():
         password = request.form.get('password', '')
 
         # 1. Try finding in Account by phone_number or clinic_name
-        account = Account.query.filter(
-            (Account.phone_number == identifier) | (Account.clinic_name == identifier)
-        ).first()
+        account = Account.query.filter_by(phone_number=identifier).first()
 
         if account and account.check_password(password):
             if not account.is_active:
                 flash('Your clinic account has been deactivated. Please contact support.', 'danger')
                 return render_template('auth/login.html')
 
+            if not account.password_hash.startswith(('pbkdf2:', 'scrypt:')):
+                account.set_password(password)
+                db.session.commit()
             session.clear()
             session['_account_id'] = account.id
             session['phone_number'] = account.phone_number
@@ -69,8 +72,8 @@ def login():
 
             AuditService.log('LOGIN', 'Account', account.id, f"Clinic account {account.phone_number} logged in.")
             flash(f"Welcome back to {account.clinic_name}!", 'success')
-            next_url = request.args.get('next')
-            if next_url and next_url.startswith('/'):
+            next_url = safe_next_url(request.args.get('next'))
+            if next_url:
                 return redirect(next_url)
             return redirect(url_for('patients.patients_list'))
 
@@ -81,6 +84,9 @@ def login():
                 flash('Your account has been deactivated.', 'danger')
                 return render_template('auth/login.html')
 
+            if not user.password_hash.startswith(('pbkdf2:', 'scrypt:')):
+                user.set_password(password)
+                db.session.commit()
             session.clear()
             session['_user_id'] = user.id
             session['username'] = user.username
@@ -88,8 +94,8 @@ def login():
 
             AuditService.log('LOGIN', 'User', user.id, f"User {user.username} logged in.", user_id=user.id)
             flash(f"Welcome back, {user.username}!", 'success')
-            next_url = request.args.get('next')
-            if next_url and next_url.startswith('/'):
+            next_url = safe_next_url(request.args.get('next'))
+            if next_url:
                 return redirect(next_url)
             return redirect(url_for('patients.patients_list'))
 
@@ -103,6 +109,11 @@ def register():
     if '_account_id' in session or '_user_id' in session:
         return redirect(url_for('patients.patients_list'))
 
+    if not current_app.config.get('ALLOW_CLINIC_REGISTRATION', False):
+        abort(403, description='Clinic registration is disabled. Ask the installation owner to provision your access.')
+    if Account.query.first() or User.query.first():
+        abort(403, description='This installation already belongs to a clinic.')
+
     if request.method == 'POST':
         phone_number = request.form.get('phone_number', '').strip()
         clinic_name = request.form.get('clinic_name', '').strip() or 'Central Clinic'
@@ -114,8 +125,8 @@ def register():
             flash('Please enter your clinic mobile phone number.', 'danger')
             return render_template('auth/register.html', phone_number=phone_number, clinic_name=clinic_name, doctor_name=doctor_name)
 
-        if not password or len(password) < 4:
-            flash('Password must be at least 4 characters long.', 'danger')
+        if not password or len(password) < 12:
+            flash('Password must be at least 12 characters long.', 'danger')
             return render_template('auth/register.html', phone_number=phone_number, clinic_name=clinic_name, doctor_name=doctor_name)
 
         if password != confirm_password:
@@ -165,7 +176,7 @@ def register():
     return render_template('auth/register.html')
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 def logout():
     acc_id = session.get('_account_id') or session.get('_user_id')
     if acc_id:
@@ -241,14 +252,14 @@ def new_patient():
             )
 
         try:
-            patient = PatientService.create_patient(request.form)
+            patient = PatientService.create_patient(request.form, commit=False)
+            create_initial = request.form.get('create_initial_encounter') == '1'
+            encounter = EncounterService.create_draft(patient, get_current_user()) if create_initial else None
+            db.session.commit()
             AuditService.log('CREATE', 'Patient', patient.id, f"Registered patient {patient.registration_number} ({patient.full_name})")
             flash(f"Patient {patient.full_name} registered successfully with Registration No: {patient.registration_number}", 'success')
-
-            create_initial = request.form.get('create_initial_encounter') == '1'
-            if create_initial:
-                return redirect(url_for('encounters.new_encounter', patient_id=patient.id, is_initial='1'))
-
+            if encounter:
+                return redirect(url_for('encounters.encounter_detail', encounter_id=encounter.id, is_initial='1'))
             return redirect(url_for('patients.patient_detail', patient_id=patient.id))
         except Exception as e:
             db.session.rollback()
@@ -395,7 +406,7 @@ def encounters_list():
     )
 
 
-@encounters_bp.route('/encounters/new')
+@encounters_bp.route('/encounters/new', methods=['GET', 'POST'])
 @login_required
 def new_encounter():
     patient_id = request.args.get('patient_id', type=int)
@@ -404,29 +415,10 @@ def new_encounter():
         return redirect(url_for('patients.patients_list'))
 
     patient = Patient.query.get_or_404(patient_id)
+    if request.method == 'GET':
+        return render_template('encounters/start.html', patient=patient)
     current_user = get_current_user()
-    doc_id = EncounterService.resolve_doctor_for_user(current_user)
-
-    encounter = Encounter(
-        patient_id=patient.id,
-        doctor_id=doc_id,
-        status='draft',
-        encounter_date=utcnow()
-    )
-    db.session.add(encounter)
-    db.session.flush()
-
-    hist_data = EncounterService.copy_previous_history(patient.id)
-    encounter_history = EncounterHistory(
-        encounter_id=encounter.id,
-        pmh=hist_data['pmh'],
-        psh=hist_data['psh'],
-        drug_history=hist_data['drug_history'],
-        allergy_history=hist_data['allergy_history'],
-        family_history=hist_data['family_history'],
-        social_history=hist_data['social_history']
-    )
-    db.session.add(encounter_history)
+    encounter = EncounterService.create_draft(patient, current_user)
     db.session.commit()
 
     is_initial = request.args.get('is_initial', '0')
@@ -446,23 +438,28 @@ def encounter_detail(encounter_id):
 
         if action == 'cancel':
             if encounter.status == 'draft':
-                EncounterService.discard_encounter_if_empty(encounter.id)
-                flash('Draft encounter cancelled and discarded.', 'info')
+                discarded = EncounterService.discard_encounter_if_empty(encounter.id)
+                flash('Empty draft discarded.' if discarded else 'Saved draft retained. Unsaved changes were discarded.', 'info')
                 return redirect(url_for('patients.patient_detail', patient_id=patient.id))
             return redirect(url_for('patients.patient_detail', patient_id=patient.id))
 
+        if not request.form.get('record_version'):
+            abort(400, description='Reload the encounter form before saving.')
+
         has_meaning = EncounterService.has_meaningful_content(encounter, request.form)
         if not has_meaning and encounter.status == 'draft':
-            db.session.delete(encounter)
-            db.session.commit()
-            flash('No clinical data entered; draft encounter was discarded.', 'info')
-            return redirect(url_for('patients.patient_detail', patient_id=patient.id))
+            if EncounterService.discard_encounter_if_empty(encounter.id):
+                flash('Empty draft discarded. Any appointment remains available.', 'info')
+                return redirect(url_for('patients.patient_detail', patient_id=patient.id))
 
         try:
             EncounterService.save_encounter_from_form(encounter, request.form, current_user)
             AuditService.log('SAVE', 'Encounter', encounter.id, f"Saved clinical encounter for patient {patient.registration_number}")
             flash('Encounter saved successfully.', 'success')
             return redirect(url_for('patients.patient_detail', patient_id=patient.id))
+        except StaleDataError:
+            db.session.rollback()
+            flash('Another user changed this encounter. Reload before saving your changes.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f"Error saving encounter: {str(e)}", 'danger')
@@ -634,11 +631,16 @@ def update_status(appointment_id):
     return redirect(url_for('appointments.appointments_list'))
 
 
-@appointments_bp.route('/appointments/<int:appointment_id>/start-encounter')
+@appointments_bp.route('/appointments/<int:appointment_id>/start-encounter', methods=['POST'])
 @login_required
 def start_encounter_from_appointment(appointment_id):
     current_user = get_current_user()
-    encounter = AppointmentService.convert_to_encounter(appointment_id, current_user)
+    try:
+        encounter = AppointmentService.convert_to_encounter(appointment_id, current_user)
+    except Exception as error:
+        db.session.rollback()
+        flash('Unable to start visit. Refresh and check appointment status.', 'danger')
+        return redirect(url_for('appointments.appointments_list'))
     flash('Encounter started and linked to scheduled appointment.', 'success')
     return redirect(url_for('encounters.encounter_detail', encounter_id=encounter.id))
 
@@ -782,6 +784,19 @@ def new_item():
     categories = InventoryCategory.query.order_by(InventoryCategory.name).all()
 
     if request.method == 'POST':
+        try:
+            for field in ['quantity', 'purchase_price', 'selling_price', 'reorder_level']:
+                if field in request.form and request.form[field] != '':
+                    finite_number(request.form[field], field.replace('_', ' ').title())
+            if not request.form.get('item_name', '').strip():
+                raise ValueError('Item name is required.')
+            if request.form.get('expiry_date'):
+                datetime.strptime(request.form['expiry_date'], '%Y-%m-%d')
+        except ValueError as error:
+            db.session.rollback()
+            flash(str(error), 'danger')
+            return render_template('inventory/form.html', item=None, categories=categories, active_tab='inventory'), 400
+
         item_name = request.form.get('item_name', '').strip()
         generic_name = request.form.get('generic_name', '').strip()
         brand = request.form.get('brand', '').strip()
@@ -858,6 +873,19 @@ def edit_item(item_id):
     categories = InventoryCategory.query.order_by(InventoryCategory.name).all()
 
     if request.method == 'POST':
+        try:
+            for field in ['quantity', 'purchase_price', 'selling_price', 'reorder_level']:
+                if field in request.form and request.form[field] != '':
+                    finite_number(request.form[field], field.replace('_', ' ').title())
+            if not request.form.get('item_name', '').strip():
+                raise ValueError('Item name is required.')
+            if request.form.get('expiry_date'):
+                datetime.strptime(request.form['expiry_date'], '%Y-%m-%d')
+        except ValueError as error:
+            db.session.rollback()
+            flash(str(error), 'danger')
+            return render_template('inventory/form.html', item=item, categories=categories, active_tab='inventory'), 400
+
         item.item_name = request.form.get('item_name', item.item_name).strip()
         item.generic_name = request.form.get('generic_name', '').strip() or None
         item.brand = request.form.get('brand', '').strip() or None
@@ -914,6 +942,7 @@ def stock_transaction(item_id):
         AuditService.log('STOCK_TXN', 'InventoryItem', item_id, f"{transaction_type} {quantity} units (Balance: {txn.balance_after})")
         flash(f"Stock movement recorded. Current balance: {txn.balance_after}", 'success')
     except Exception as e:
+        db.session.rollback()
         flash(f"Stock transaction failed: {str(e)}", 'danger')
 
     return redirect(url_for('inventory.inventory_list'))
@@ -976,15 +1005,16 @@ def new_voucher():
         for idx, desc in enumerate(descriptions):
             if desc and desc.strip():
                 try:
-                    qty = float(quantities[idx]) if idx < len(quantities) else 1.0
-                    price = float(prices[idx]) if idx < len(prices) else 0.0
+                    qty = finite_number(quantities[idx] if idx < len(quantities) else 1, 'Quantity', minimum=0.000001)
+                    price = finite_number(prices[idx] if idx < len(prices) else 0, 'Unit price')
                     items_data.append({
                         'description': desc.strip(),
                         'quantity': qty,
                         'unit_price': price
                     })
-                except ValueError:
-                    continue
+                except ValueError as error:
+                    flash(str(error), 'danger')
+                    return render_template('billing/form.html', encounter=encounter, patient=patient, active_tab='patients', sub_view='patients'), 400
 
         if not items_data:
             flash('At least one item or service is required on the voucher.', 'danger')
@@ -1111,7 +1141,7 @@ def index():
         chart_counts.append(cnt)
 
     # Revenue Breakdown
-    v_items = VoucherItem.query.all()
+    v_items = VoucherItem.query.join(Voucher).filter(Voucher.status != 'cancelled').all()
     rev_consult = sum(item.amount for item in v_items if item.item_type == 'CONSULTATION')
     rev_pharmacy = sum(item.amount for item in v_items if item.item_type == 'MEDICATION')
     rev_procedures = sum(item.amount for item in v_items if item.item_type in ['PROCEDURE', 'INVESTIGATION'])

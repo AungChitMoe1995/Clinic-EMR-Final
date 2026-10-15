@@ -38,15 +38,15 @@
                     </button>
                 </form>
 
-                <div class="text-center mt-3 pt-3 border-top">
+                {% if config.ALLOW_CLINIC_REGISTRATION %}<div class="text-center mt-3 pt-3 border-top">
                     <span class="text-muted small">Need a new clinic account?</span>
                     <a href="{{ url_for('auth.register') }}" class="small fw-semibold ms-1" style="color: var(--clinic-primary-container);">
                         Create Account
                     </a>
-                </div>
+                </div>{% endif %}
             </div>
             <div class="card-footer bg-light text-center py-2 text-muted small">
-                <i class="bi bi-shield-lock text-success me-1"></i> Connected to Waifly Cloud Database
+                <i class="bi bi-shield-lock text-success me-1"></i> Clinic workspace
             </div>
         </div>
     </div>
