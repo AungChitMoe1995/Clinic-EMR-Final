@@ -59,7 +59,7 @@ Stop application writers and run:
 python tools/upgrade_database.py --database database/emr.sqlite3
 ```
 
-The helper creates a SQLite backup under ignored `.local-backups/`, checks the baseline schema of legacy `create_all` installations, stamps the original revision only when required columns match, and applies additive migrations. It performs integrity and foreign-key checks. It never selects a remote database from environment credentials. The new migration adds row versions and height/glucose fields, and supplies the Account table missing from the original migration when necessary. Restore a reviewed backup to reverse it. The local development database was backed up and upgraded during this revision; no remote deployment was modified.
+The helper creates a SQLite backup under ignored `.local-backups/`, checks the baseline schema of legacy `create_all` installations, stamps the original revision only when required columns match, and applies additive migrations. It performs integrity and foreign-key checks. It never selects a remote database from environment credentials. The new migration adds row versions and height/glucose fields, and supplies the Account table missing from the original migration when necessary. Restore a reviewed backup to reverse it. The local development database was backed up and upgraded during this revision. On 15 October 2026, Waifly release `8fef6f9793fb` was activated against the existing hosted SQLite database after a consistent backup and successful upgrade to `b4e20261015`; see [deployment notes](docs/waifly_deployment.md).
 
 ## Implementation
 
@@ -96,7 +96,7 @@ Important remaining limits:
 - No drug interaction checking, dose recommendations, dispensing reconciliation, allergy decision support, or ICD/FHIR/HL7 integration is implemented. Medication quantities are clinician-entered.
 - Reports display at most 100 records. Dashboard category totals infer item type from free text and show gross billed line amounts, without allocating discounts or collected payments.
 - Times are stored as naive UTC and existing views do not implement configurable clinic timezone conversion.
-- MariaDB deployment, concurrent load, backup restoration, and external hosting were not validated in this revision. HTTPS, secure cookies, stable secrets and a production WSGI server require deployment configuration.
+- MariaDB deployment, concurrent load, backup restoration, and authenticated hosted workflows were not validated in this revision. Waifly startup, the public login page, release identification, and migration/backup logs were checked. HTTPS, secure cookies, stable secrets and a production WSGI server require deployment configuration.
 
 See [workflow notes](docs/workflow_review.md) and [database upgrade instructions](docs/database_upgrade.md).
 

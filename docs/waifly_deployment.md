@@ -37,3 +37,22 @@ would discard subsequent records and needs a separate review.
 
 Migration failure prevents the new app from starting; inspect its private error
 log and restore the previous startup file. Keep backup directories private.
+
+## Deployment record — 15 October 2026
+
+Release `8fef6f9793fb` was activated at 06:52:30 UTC (13:22:30 MMT).
+The hosted database remained `database/emr.sqlite3`. Its verified SQLite backup
+is under `.releases/emr-8fef6f9793fb/.local-backups/` on the same server; no local
+clinical database was uploaded. Migration logs confirm baseline stamping and
+upgrade to `b4e20261015` completed successfully.
+
+This host rejected the POSIX atomic-rename extension. After the normal Stop did
+not terminate the old process, the owner explicitly approved Force Stop in the
+panel. While offline, the old `run.py` was moved into the private release backup,
+and the verified `run.py.pending` was renamed to `run.py` using standard SFTP
+rename. The server was then started through the panel.
+
+A read-only request to `/login` returned HTTP 200 with
+`X-EMR-Release: emr-8fef6f9793fb`, `X-EMR-Database: sqlite`, and
+`Cache-Control: no-store, private`. The login page was also visually inspected.
+No automated or authenticated workflow tests were run, as requested.
